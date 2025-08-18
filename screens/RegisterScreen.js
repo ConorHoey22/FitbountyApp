@@ -22,7 +22,7 @@ export default function RegisterScreen() {
       setError(signUpError.message);
       return;
     }
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+
   };
 
   return (
