@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Weight Tracker</title>
+	<link rel="stylesheet" href="styles.css">
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+	<div class="container">
+		<h1>Weight Tracker</h1>
+		<section class="card">
+			<h2>Add Entry</h2>
+			<form id="entry-form">
+				<label>
+					Date
+					<input type="date" id="entry-date" required>
+				</label>
+				<label>
+					Weight
+					<input type="number" id="entry-weight" inputmode="decimal" step="0.1" min="0" required>
+				</label>
+				<label>
+					Unit
+					<select id="entry-unit">
+						<option value="kg">kg</option>
+						<option value="lbs">lbs</option>
+					</select>
+				</label>
+				<button type="submit">Add</button>
+			</form>
+		</section>
+
+		<section class="card">
+			<h2>Weekly Average</h2>
+			<canvas id="weeklyChart" height="120"></canvas>
+		</section>
+
+		<section class="card">
+			<h2>Entries</h2>
+			<div class="entries-controls">
+				<button id="clear-all" class="danger">Clear All</button>
+				<label class="inline">
+					Display unit
+					<select id="display-unit">
+						<option value="kg">kg</option>
+						<option value="lbs">lbs</option>
+					</select>
+				</label>
+			</div>
+			<ul id="entries"></ul>
+		</section>
+	</div>
+	<script src="app.js"></script>
+</body>
+</html>
