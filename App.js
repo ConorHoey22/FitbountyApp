@@ -74,6 +74,11 @@ function AppTabs() {
         component={ProfileScreen}
         options={{ title: 'Profile' }}
       />
+      <Tab.Screen 
+        name="Weight" 
+        component={require('./screens/WeightTrackerScreen').default}
+        options={{ title: 'Weight' }}
+      />
     </Tab.Navigator>
   );
 }
