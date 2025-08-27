@@ -36,7 +36,7 @@ export default function LoginScreen() {
       setError(signInError.message);
       return;
     }
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+  
   };
 
   return (

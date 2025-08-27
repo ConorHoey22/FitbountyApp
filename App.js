@@ -4,11 +4,16 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
 import WorkoutsScreen from './screens/WorkoutsScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import PlanYourWeekScreen from './screens/PlanYourWeekScreen';
+import CreateMyPlan from './screens/CreateMyPlan'; 
+import WeightTrackerScreen from './screens/WeightTrackerScreen';
+
 import { supabase } from './lib/supabase';
 
 const Stack = createNativeStackNavigator();
@@ -29,15 +34,15 @@ function AppTabs() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Workouts') {
             iconName = focused ? 'fitness' : 'fitness-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'PlanYourWeek') {
+            iconName = focused ? 'newspaper' : 'newspaper-outline';
           }
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#4CAF50',
@@ -50,31 +55,47 @@ function AppTabs() {
           paddingTop: 5,
           height: 60,
         },
-        headerStyle: {
-          backgroundColor: '#4CAF50',
-        },
+        headerStyle: { backgroundColor: '#4CAF50' },
         headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerTitleStyle: { fontWeight: 'bold' },
       })}
     >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen}
-        options={{ title: 'Dashboard' }}
-      />
-      <Tab.Screen 
-        name="Workouts" 
-        component={WorkoutsScreen}
-        options={{ title: 'Workouts' }}
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
-        options={{ title: 'Profile' }}
-      />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Dashboard' }} />
+      <Tab.Screen name="Workouts" component={WorkoutsScreen} />
+      <Tab.Screen name="ProfileScreen" component={ProfileScreen} />
+      <Tab.Screen name="PlanYourWeekScreen" component={PlanYourWeekScreen} options={{ title: 'Plan' }} />
     </Tab.Navigator>
+  );
+}
+
+// 👇 This stack wraps your tabs and adds extra routes
+function AppStack() {
+  return (
+    <Stack.Navigator>
+      {/* Tabs go first */}
+      <Stack.Screen
+        name="AppTabs"
+        component={AppTabs}
+        options={{ headerShown: false }} // hide header for tabs
+      />
+
+      {/* Extra screens not in bottom tab */}
+      <Stack.Screen
+        name="PlanYourWeekScreen"
+        component={CreateMyPlan}
+        options={{ title: 'PlanYourWeekScreen' }}
+      />
+       <Stack.Screen
+        name="CreateMyPlan"
+        component={CreateMyPlan}
+        options={{ title: 'Create My Plan' }}
+      />
+       <Stack.Screen
+        name="WeightTrackerScreen"
+        component={WeightTrackerScreen}
+        options={{ title: 'Track your Weight' }}
+      />
+    </Stack.Navigator>
   );
 }
 
@@ -102,13 +123,11 @@ export default function App() {
     };
   }, []);
 
-  if (isCheckingSession) {
-    return null;
-  }
+  if (isCheckingSession) return null;
 
   return (
     <NavigationContainer>
-      {hasSession ? <AppTabs /> : <AuthStack />}
+      {hasSession ? <AppStack /> : <AuthStack />}
     </NavigationContainer>
   );
 }
