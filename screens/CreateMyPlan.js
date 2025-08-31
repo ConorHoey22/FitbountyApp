@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 const STORAGE_KEY = 'fitbounty.weeklyPlanner.v1';
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
+
 const DEFAULT_XP_BY_TYPE = { Gym: 50, Cardio: 30, Stretching: 20, Social: 10 };
 
 function createEmptyPlanner() {

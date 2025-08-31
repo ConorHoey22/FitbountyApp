@@ -13,8 +13,10 @@ import ProfileScreen from './screens/ProfileScreen';
 import PlanYourWeekScreen from './screens/PlanYourWeekScreen';
 import CreateMyPlan from './screens/CreateMyPlan'; 
 import WeightTrackerScreen from './screens/WeightTrackerScreen';
+import SettingsScreen from './screens/SettingsScreen';
 
 import { supabase } from './lib/supabase';
+import RewardSystemScreen from './screens/RewardSystemScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -38,32 +40,41 @@ function AppTabs() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Workouts') {
             iconName = focused ? 'fitness' : 'fitness-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          } else if (route.name === 'PlanYourWeek') {
-            iconName = focused ? 'newspaper' : 'newspaper-outline';
+          } else if (route.name === 'ProfileScreen') {
+            iconName = focused ? 'person' : 'person-circle-outline';
+          } else if (route.name === 'PlanYourWeekScreen') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
+          } else if (route.name === 'SettingsScreen') {
+            iconName = focused ? 'settings' : 'settings-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: 'gray',
+    
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: '#e0e0e0',
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          height: 70,             // controls total height
+          paddingBottom: 6,       // small, keeps text/icons off the edge
+          paddingTop: 6,          // keeps icons from being too high
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          marginBottom: 10,        // pulls text slightly up
         },
         headerStyle: { backgroundColor: '#4CAF50' },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: 'bold' },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Dashboard' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
+      <Tab.Screen name="ProfileScreen" component={ProfileScreen} options={{ title: 'Profile' ,headerShown: false }} />
       <Tab.Screen name="Workouts" component={WorkoutsScreen} />
-      <Tab.Screen name="ProfileScreen" component={ProfileScreen} />
-      <Tab.Screen name="PlanYourWeekScreen" component={PlanYourWeekScreen} options={{ title: 'Plan' }} />
+      <Tab.Screen name="PlanYourWeekScreen" component={PlanYourWeekScreen} options={{ title: 'Your Plan' }} />
+      <Tab.Screen name="SettingsScreen" component={SettingsScreen} options={{title: 'Settings'}} />
     </Tab.Navigator>
   );
 }
@@ -80,20 +91,21 @@ function AppStack() {
       />
 
       {/* Extra screens not in bottom tab */}
-      <Stack.Screen
-        name="PlanYourWeekScreen"
-        component={CreateMyPlan}
-        options={{ title: 'PlanYourWeekScreen' }}
-      />
+  
        <Stack.Screen
         name="CreateMyPlan"
         component={CreateMyPlan}
-        options={{ title: 'Create My Plan' }}
+        options={{ title: 'Create a Plan' }}
       />
        <Stack.Screen
         name="WeightTrackerScreen"
         component={WeightTrackerScreen}
         options={{ title: 'Track your Weight' }}
+      />
+       <Stack.Screen
+        name="RewardSystemScreen"
+        component={RewardSystemScreen}
+        options={{ title: 'Your Reward System'}}
       />
     </Stack.Navigator>
   );

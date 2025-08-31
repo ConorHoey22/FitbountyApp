@@ -1,0 +1,19 @@
+🎨 Primary Colors
+Teal Background → #1CA7A0
+Bright Orange (buttons, accents) → #FF6B3D
+Yellow Progress Bar → #FFD54F
+Light Blue Progress Bar → #4FC3F7
+Purple Background (Rewards/Workout screen) → #3E2F66
+Dark Navy Background → #232946
+🎨 Secondary Colors
+Green Accent (heart/health) → #4CAF50
+Sky Blue (profile button) → #2196F3
+Red Accent (alerts/redeem) → #E53935
+White (text/cards) → #FFFFFF
+Light Grey Text → #CCCCCC
+🎨 Example Usage
+XP Bars: Use #FFD54F (yellow) and #4FC3F7 (blue).
+Cards: White background #FFFFFF with shadow.
+Rewards screen background: Purple #3E2F66.
+Profile CTA button: Blue #2196F3.
+General app background (dark mode): Navy #232946.

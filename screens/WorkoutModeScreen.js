@@ -1,19 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function XPBar({ currentXP = 350, levelXP = 500, level = 3 }) {
-  const progress = Math.min(currentXP / levelXP, 1); // progress capped at 100%
+export default function WorkoutModeScreen({ currentAmount = 43, totalAmount = 100, l }) {
+  const progress = Math.min(currentAmount / totalAmount, 1); // progress capped at 100%
 
   return (
     <View style={styles.container}>
-      <Text style={styles.levelText}>Level {level}</Text>
-      <View style={styles.barBackground}>
-        <View style={[styles.barFill, { flex: progress }]} />
-        <View style={{ flex: 1 - progress }} />
-      </View>
-      <Text style={styles.xpText}>
-        {currentXP} / {levelXP} XP
-      </Text>
+
+        <Text>Workout</Text>
+   
     </View>
   );
 }
@@ -37,7 +32,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 5,
   },
   barFill: {
     backgroundColor: '#4CAF50',

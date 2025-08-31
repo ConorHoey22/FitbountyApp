@@ -9,11 +9,17 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+
+
+import { useNavigation } from '@react-navigation/native';
+
 import { LineChart } from 'react-native-chart-kit';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function WeightTrackerScreen() {
+
+  const navigation = useNavigation();
   const [unit, setUnit] = useState('kg'); // display unit
   const [weights, setWeights] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);

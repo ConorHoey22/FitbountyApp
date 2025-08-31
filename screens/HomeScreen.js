@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import XPBar from '../components/XPBar';
+import XPBar from '../components/XPBarLevel';
+import TrackerBar from '../components/TrackerBar';
 
 export default function HomeScreen() {
   
@@ -41,16 +42,20 @@ export default function HomeScreen() {
 
           <View style={styles.statsContainer}>
               <View style={styles.statCard}>
-                <Text style={styles.statValue}>0 / {testuser.cardioGoal}</Text>
-                <Text style={styles.statUnit}>Minutes</Text>
-                <Text style={styles.statLabel}>Cardio</Text>
+                <Text style={styles.statValue}>0 / {testuser.cardioGoal} Minutes</Text>
+
+
+                <TrackerBar></TrackerBar>
               </View>
           </View>
 
           <View style={styles.statsContainer}>
               <View style={styles.statCard}>
-                <Text style={styles.statValue}>0 / {testuser.stepsGoal}</Text>
-                <Text style={styles.statUnit}>Steps</Text>
+
+                <Text style={styles.statValue}>0 / {testuser.stepsGoal} Steps</Text>
+
+                <TrackerBar></TrackerBar>
+
               </View>
           </View>
 
@@ -58,8 +63,8 @@ export default function HomeScreen() {
 
           <View style={styles.statsContainer}>
               <View style={styles.statCard}>
-                <Text style={styles.statValue}>0 / {testuser.workoutGoal}</Text>
-                <Text style={styles.statLabel}>Workouts</Text>
+                <Text style={styles.statValue}>0 / {testuser.workoutGoal} Workouts</Text>
+                <TrackerBar></TrackerBar>
               </View>
           </View>
         
@@ -77,23 +82,26 @@ export default function HomeScreen() {
             <View style={styles.macroCard}>
               <Text style={styles.macroValue}>{nutrition.protein}g</Text>
               <Text style={styles.macroLabel}>Protein</Text>
+              <TrackerBar></TrackerBar>
             </View>
             <View style={styles.macroCard}>
               <Text style={styles.macroValue}>{nutrition.carbs}g</Text>
               <Text style={styles.macroLabel}>Carbs</Text>
+              <TrackerBar></TrackerBar>
             </View>
             <View style={styles.macroCard}>
               <Text style={styles.macroValue}>{nutrition.fats}g</Text>
               <Text style={styles.macroLabel}>Fats</Text>
+              <TrackerBar></TrackerBar>
             </View>
           </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('CreateMyPlan')}>
-            <Text style={styles.actionButtonText}>Start Workout</Text>
+       
+          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('RewardSystemScreen')}>
+            <Text style={styles.actionButtonText}>Reward System</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={() => navigation.navigate('WeightTrackerScreen')}>
             <Text style={styles.secondaryButtonText}>View Progress</Text>
@@ -142,7 +150,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2.22,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#4CAF50',
   },
