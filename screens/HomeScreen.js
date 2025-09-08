@@ -1,105 +1,196 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar ,ActivityIndicator } from 'react-native';
 import XPBar from '../components/XPBarLevel';
+import { Ionicons } from '@expo/vector-icons';
 import TrackerBar from '../components/TrackerBar';
+import { supabase } from '../lib/supabase';
+
+const testUser = {
+  nutrition: 2000,
+  calories:2000,
+  protein:130,
+  carbs:100,
+  fats:40
+}
+
+const theme = {
+  // Dim hybrid palette
+  bg: '#111827',            // slate-900 (dark, not black)
+  surface: '#1E293B',       // slate-800 (mid card)
+  surfaceAlt: '#0F172A',    // slate-900/indigo tint (header/alt)
+  surfaceLight: '#F1F5F9',  // slate-100 (light card to break up darkness)
+  border: '#334155',        // slate-700
+  text: '#E5E7EB',          // light text on dark
+  textMuted: '#9CA3AF',     // muted on dark
+  textOnLight: '#0F172A',   // dark text on light cards
+  primary: '#3B82F6',       // blue
+  success: '#22C55E',       // green
+  warning: '#F59E0B',       // amber
+};
 
 export default function HomeScreen() {
-  
-  
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const navigation = useNavigation();
 
-  const testuser = { 
-    stepsGoal: 10000,
-    cardioGoal: 220,
-    workoutGoal: 4
+  useEffect(() => {
 
-  };
+    const getProfile = async () => {
+      try {
+        setLoading(true);
 
-  const stats = [
-    { label: 'Steps' , value: '8,432', unit: 'steps' },
-    { label: 'Active Minutes', value: '45', unit: 'min' },
-  ];
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
 
-  // Nutrition targets (intake, not burned)
-  const nutrition = {
-    calories: 2200,
-    protein: 150,
-    carbs: 250,
-    fats: 70,
-  };
+        // Fetch user profile row
+        const { data: profileData, error } = await supabase
+          .from('userProfiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        // If profile exists but trigger is false → redirect
+        if (profileData && !profileData.UserHasEnteredTheirProfileDataTrigger) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'CreateUserPlan' }],
+          });
+          return; // don’t set profile → avoid flashing wrong screen
+        }
+
+        setProfile(profileData);
+      } catch (err) {
+        console.error('Profile check error:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getProfile();
+  }, [navigation]);
 
 
 
-  return (
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={styles.center}>
+        <Text>No profile found</Text>
+      </View>
+    );
+  }
+
+    return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Welcome to FitBounty!</Text>
+      <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+
+        <Text style={styles.title}>Welcome to FitBounty, {profile.first_name || 'Friend'} </Text>
         <Text style={styles.subtitle}>Your fitness journey starts here</Text>
-        
-          {/* XP Bar Component */}
-          <XPBar currentXP={350} levelXP={500} level={3} />
 
-          <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>0 / {testuser.cardioGoal} Minutes</Text>
+        {/* Level Progress (mid-tone card) */}
 
-
-                <TrackerBar></TrackerBar>
-              </View>
-          </View>
-
-          <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-
-                <Text style={styles.statValue}>0 / {testuser.stepsGoal} Steps</Text>
-
-                <TrackerBar></TrackerBar>
-
-              </View>
-          </View>
-
-
-
-          <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>0 / {testuser.workoutGoal} Workouts</Text>
-                <TrackerBar></TrackerBar>
-              </View>
-          </View>
+          <XPBar
+            currentXP={350}
+            levelXP={500}
+            level={3}
+         />
         
 
-        {/* Nutrition Overview */}
+    <View style={styles.nutritionContainer}>
+  
+     <Text style={styles.sectionTitle}>My Fitness Goals</Text> 
+    </View>
+        {/* Cardio */}
+        <View style={styles.statsContainer}>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>Cardio : 0 / {profile.cardioGoal || 0} Minutes</Text>
+              <View style={styles.trackerWrap}>
+                
+                <TrackerBar
+                />
+              </View>
+
+          {/* Steps */}
+              <Text style={styles.statValue}>Steps : 0 / {profile.stepGoal || 0}</Text>
+              <View style={styles.trackerWrap}>
+                <TrackerBar
+                />
+              </View>
+
+          {/* Workouts */}
+              <Text style={styles.statValue}>Workouts : 0 / {profile.workoutSessionsGoal || 0} </Text>
+              <View style={styles.trackerWrap}>
+                <TrackerBar
+                />
+      
+              </View>
+
+            </View>
+        </View>
+
+
+        {/* Nutrition (light card to add contrast) */}
         <View style={styles.nutritionContainer}>
           <Text style={styles.sectionTitle}>Nutrition Overview</Text>
-          
-          <View style={styles.nutritionCard}>
-            <Text style={styles.caloriesValue}>{nutrition.calories}</Text>
-            <Text style={styles.caloriesLabel}>Calories</Text>
+
+          <View style={styles.nutritionCardLight}>
+            <Text style={styles.caloriesValueLight}>{testUser.calories}</Text>
+            <Text style={styles.caloriesLabelLight}>Calories</Text>
           </View>
 
           <View style={styles.macrosRow}>
-            <View style={styles.macroCard}>
-              <Text style={styles.macroValue}>{nutrition.protein}g</Text>
+
+            <TouchableOpacity style={styles.macroCard} onPress={() => navigation.navigate('RewardSystemScreen')}>
+              <Text style={[styles.macroValue, { color: theme.primary }]}>{testUser.protein}g</Text>
               <Text style={styles.macroLabel}>Protein</Text>
-              <TrackerBar></TrackerBar>
-            </View>
-            <View style={styles.macroCard}>
-              <Text style={styles.macroValue}>{nutrition.carbs}g</Text>
+              <View style={styles.trackerWrap}>
+                <TrackerBar/>       
+                <Ionicons name="add-circle-outline" size={24} color="white"  onPress={() => navigation.navigate('RewardSystemScreen')} ></Ionicons>
+              </View>
+           
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.macroCard} onPress={() => navigation.navigate('RewardSystemScreen')}>
+              <Text style={[styles.macroValue, { color: '#38BDF8' }]}>{testUser.carbs}g</Text>
               <Text style={styles.macroLabel}>Carbs</Text>
-              <TrackerBar></TrackerBar>
-            </View>
-            <View style={styles.macroCard}>
-              <Text style={styles.macroValue}>{nutrition.fats}g</Text>
+              <View style={styles.trackerWrap}>
+                <TrackerBar/>
+                <Ionicons name="add-circle-outline" size={24} color="white"  onPress={() => navigation.navigate('RewardSystemScreen')} ></Ionicons>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.macroCard} >
+              <Text style={[styles.macroValue, { color: '#A78BFA' }]}>{testUser.fats}g</Text>
               <Text style={styles.macroLabel}>Fats</Text>
-              <TrackerBar></TrackerBar>
+              <View style={styles.trackerWrap}>
+                <TrackerBar/>
+              <Ionicons name="add-circle-outline" size={24} color="white"  onPress={() => navigation.navigate('RewardSystemScreen')} ></Ionicons>
+              </View>
+
+ 
+       
             </View>
+
+
           </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-       
           <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('RewardSystemScreen')}>
             <Text style={styles.actionButtonText}>Reward System</Text>
           </TouchableOpacity>
@@ -113,137 +204,171 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Base
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-    padding: 20,
+    backgroundColor: theme.bg,
+    padding: 40,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
+    fontWeight: '800',
+    marginBottom: 6,
+    color: theme.text,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 30,
+    fontSize: 14,
+    color: theme.textMuted,
+    marginBottom: 22,
     textAlign: 'center',
+  },
+
+  // Cards
+  cardPadded: {
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: 14,
   },
   statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    paddingTop:20,
+    padding: 7,
+    alignItems: 'flex-start', 
     flex: 1,
     marginHorizontal: 5,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
+  trackerWrap: {
+    width: '100%',
+    marginTop: -10,
+  },
+
+  // Text
   statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4CAF50',
+    fontSize: 14,
+    fontWeight: '350',
+    color: theme.text,
+    alignItems: 'flex-start', 
   },
   statUnit: {
     fontSize: 12,
-    color: '#666',
+    color: theme.textMuted,
     marginBottom: 5,
   },
   statLabel: {
     fontSize: 12,
-    color: '#333',
+    color: theme.text,
     textAlign: 'center',
   },
+
+  // Nutrition (light card for contrast)
   nutritionContainer: {
-    marginBottom: 30,
+    marginTop: 6,
+    marginBottom: 16,
   },
-  nutritionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+  nutritionCardLight: {
+    backgroundColor: theme.surfaceLight,
+    borderRadius: 14,
     padding: 20,
     alignItems: 'center',
-    marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0', // slate-200 for light edge
   },
-  caloriesValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FF5722',
+  caloriesValueLight: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: theme.warning,
   },
-  caloriesLabel: {
-    fontSize: 14,
-    color: '#666',
+  caloriesLabelLight: {
+    fontSize: 12,
+    color: theme.textOnLight,
+    opacity: 0.7,
+    marginTop: 2,
   },
+
   macrosRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   macroCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    padding: 14,
     alignItems: 'center',
     marginHorizontal: 5,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   macroValue: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#2196F3',
+    fontWeight: '700',
+    color: theme.text,
   },
   macroLabel: {
     fontSize: 12,
-    color: '#333',
+    color: theme.textMuted,
   },
+  macroLabelSmall: {
+    fontSize: 12,
+ 
+    color: theme.textMuted,
+  },
+  macroLabelMedium: {
+    fontSize: 15,
+
+    color: theme.textMuted,
+  },
+  macroLabelLarge: {
+    fontSize: 25,
+
+    color: theme.textMuted,
+  },
+
+  // Buttons
   quickActions: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
+    marginTop: 10,
   },
   actionButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 15,
-    borderRadius: 25,
+    backgroundColor: theme.primary,
+    paddingVertical: 14,
+    borderRadius: 24,
     alignItems: 'center',
     marginBottom: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
   },
   actionButtonText: {
-    color: '#fff',
+    color: theme.text,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#4CAF50',
+    backgroundColor: '#E2E8F0',   // light button for contrast
+    borderWidth: 0,
   },
   secondaryButtonText: {
-    color: '#4CAF50',
+    color: theme.textOnLight,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: theme.text,
+    marginBottom: 10,
   },
 });
+ 

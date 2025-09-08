@@ -12,6 +12,7 @@ import WorkoutsScreen from './screens/WorkoutsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import PlanYourWeekScreen from './screens/PlanYourWeekScreen';
 import CreateMyPlan from './screens/CreateMyPlan'; 
+import CreateUserPlan from './screens/CreateUserPlan';
 import WeightTrackerScreen from './screens/WeightTrackerScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
@@ -65,7 +66,7 @@ function AppTabs() {
           fontWeight: '600',
           marginBottom: 10,        // pulls text slightly up
         },
-        headerStyle: { backgroundColor: '#4CAF50' },
+        headerStyle: { backgroundColor: '#0B1220' },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: 'bold' },
       })}
@@ -91,7 +92,17 @@ function AppStack() {
       />
 
       {/* Extra screens not in bottom tab */}
-  
+      <Stack.Screen
+        name="CreateUserPlan"
+        component={CreateUserPlan}
+        options={{ title: 'Start your Journey' }}
+      />
+
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ title: 'FitBounty' }}
+      />
        <Stack.Screen
         name="CreateMyPlan"
         component={CreateMyPlan}

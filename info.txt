@@ -17,3 +17,10 @@ Cards: White background #FFFFFF with shadow.
 Rewards screen background: Purple #3E2F66.
 Profile CTA button: Blue #2196F3.
 General app background (dark mode): Navy #232946.
+
+
+Currently working on : Registeration - Set up user screen - set the goal , fitness data , then we will start to pull that data into all screens - BUG on Weight amount and need backend funtion to update StepCount +2000 from what they entered
+
+
+Profile design
+
