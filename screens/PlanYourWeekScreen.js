@@ -1,167 +1,209 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
 
-export default function PlanYourWeekScreen() {
-  const navigation = useNavigation();
-  const today = new Date().getDay(); // 0 = Sunday, 1 = Monday ...
+const daysOfWeek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
-  const [openDay, setOpenDay] = useState(null); // expanded card
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(null);
+export default function PlanYourWeekScreen({ navigation }) {
+  const [step, setStep] = useState(0);
+  const [maxGymDays, setMaxGymDays] = useState(0);
+  const [cardioGoal, setCardioGoal] = useState(0);
 
-  const days = [
-    { id: 1, name: 'Monday', description: 'Workout', cardio: 10, stepCount: 10000, icon: 'barbell' },
-    { id: 2, name: 'Tuesday', description: 'Busy Day (Rest)', cardio: 30, stepCount: 300, icon: 'bed' },
-    { id: 3, name: 'Wednesday', description: 'Golf', cardio: 10, stepCount: 11000, icon: 'flag-outline' },
-    { id: 4, name: 'Thursday', description: 'Workout', cardio: 10, stepCount: 2820, icon: 'barbell' },
-    { id: 5, name: 'Friday', description: 'Workout', cardio: 40, stepCount: 2810, icon: 'barbell' },
-    { id: 6, name: 'Saturday', description: 'Workout', cardio: 10, stepCount: 2820, icon: 'barbell' },
-    { id: 0, name: 'Sunday', description: 'Visiting a Friend', cardio: 10, stepCount: 2820, icon: 'people' },
-  ];
+  const [selectedGymDays, setSelectedGymDays] = useState([]);
+  const [cardioPlan, setCardioPlan] = useState({}); // { Monday: 30, Wednesday: 30 }
 
-  const totalSteps = days.reduce((acc, d) => acc + d.stepCount, 0);
-  const totalCardio = days.reduce((acc, d) => acc + d.cardio, 0);
-  const workoutDays = days.filter(d => d.description.includes('Workout')).length;
+  useEffect(() => {
+    const loadProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase
+        .from('userProfiles')
+        .select('workoutSessionsGoal, cardioGoal')
+        .eq('id', user.id)
+        .single();
 
-  const toggleDay = (id) => {
-    setOpenDay(prev => (prev === id ? null : id));
+      setMaxGymDays(data?.workoutSessionsGoal ?? 0);
+      setCardioGoal(data?.cardioGoal ?? 0);
+    };
+    loadProfile();
+  }, []);
+
+  const toggleGymDay = (day) => {
+    if (selectedGymDays.includes(day)) {
+      setSelectedGymDays(selectedGymDays.filter(d => d !== day));
+    } else if (selectedGymDays.length < maxGymDays) {
+      setSelectedGymDays([...selectedGymDays, day]);
+    }
   };
 
-  const handleViewDetails = (day) => {
-    setSelectedDay(day);
-    setModalVisible(true);
+  const toggleCardioDay = (day) => {
+    if (cardioPlan[day]) {
+      const newPlan = { ...cardioPlan };
+      delete newPlan[day];
+      setCardioPlan(newPlan);
+    } else {
+      setCardioPlan({ ...cardioPlan, [day]: 0 });
+    }
   };
 
-  const handleEdit = () => {
-    setModalVisible(false);
-    alert(`Edit ${selectedDay?.name}`);
-    // navigation.navigate("EditScreen", { day: selectedDay });
+  const updateCardioMinutes = (day, minutes) => {
+    setCardioPlan({ ...cardioPlan, [day]: parseInt(minutes, 10) || 0 });
   };
 
-  const handleDelete = () => {
-    setModalVisible(false);
-    alert(`${selectedDay?.name} deleted`);
-    // hook up with DB later
-  };
+  const totalCardioMinutes = Object.values(cardioPlan).reduce((a, b) => a + b, 0);
 
-  const handleComplete = () => {
-    setModalVisible(false);
-    alert(`${selectedDay?.name} marked complete! 🎉`);
-  };
+  // const savePlan = async () => {
+  //   try {
+  //     const weeklyPlan = {};
+  //     selectedGymDays.forEach(day => {
+  //       weeklyPlan[day] = { type: 'Workout', cardio: 0 };
+  //     });
+  //     Object.entries(cardioPlan).forEach(([day, minutes]) => {
+  //       weeklyPlan[day] = { type: 'Cardio', cardio: minutes };
+  //     });
+  
+  //     await AsyncStorage.setItem('weeklyPlan', JSON.stringify(weeklyPlan));
+  
+  //     // Update DB first
+  //     const { data: { user } } = await supabase.auth.getUser();
+  //     const { error } = await supabase
+  //       .from('userProfiles')
+  //       .update({
+  //         UserHasWeeklyPlanSetup: true,
+  //         lastupdate_at: new Date().toISOString(),
+  //       })
+  //       .eq('id', user.id);
+  
+  //     if (error) throw error;
+  
+  //     // Only navigate after DB update succeeds
+  //     navigation.replace('Home');
+  //   } catch (err) {
+  //     console.error('Save plan error:', err.message);
+  //   }
+  // };
+  
 
+  const savePlan = async () => {
+    try {
+      const weeklyPlan = {};
+      selectedGymDays.forEach(day => {
+        weeklyPlan[day] = { type: 'Workout', cardio: 0 };
+      });
+      Object.entries(cardioPlan).forEach(([day, minutes]) => {
+        weeklyPlan[day] = { type: 'Cardio', cardio: minutes };
+      });
+  
+      await AsyncStorage.setItem('weeklyPlan', JSON.stringify(weeklyPlan));
+  
+      // Update DB first
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('userProfiles')
+        .update({
+          UserHasWeeklyPlanSetup: true,
+          lastupdate_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+  
+      if (error) throw error;
+  
+      // Only navigate after DB update succeeds
+      navigation.replace('Home');
+    } catch (err) {
+      console.error('Save plan error:', err.message);
+    }
+  };
+  
+
+
+
+  
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Plan ahead and Plan your Week!</Text>
-      <Text style={styles.subtitle}>Fail to plan, plan to fail!</Text>
+    <ScrollView style={styles.container}>
+      {/* Step 0: Select Gym Days */}
+      {step === 0 && maxGymDays > 0 && (
+        <>
+          <Text style={styles.title}>
+            Select {maxGymDays} gym days:
+          </Text>
+          {daysOfWeek.map((day) => (
+            <TouchableOpacity
+              key={day}
+              style={[
+                styles.dayButton,
+                selectedGymDays.includes(day) && styles.selectedDay
+              ]}
+              onPress={() => toggleGymDay(day)}
+            >
+              <Text style={styles.dayText}>{day}</Text>
+            </TouchableOpacity>
+          ))}
+          {selectedGymDays.length === maxGymDays && (
+            <TouchableOpacity style={styles.nextButton} onPress={() => setStep(1)}>
+              <Text style={styles.nextText}>Next</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
 
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('CreateMyPlan')}>
-        <Text style={styles.buttonText}>Plan your Week</Text>
-      </TouchableOpacity>
-
-      {/* Weekly Summary */}
-      <View style={styles.summaryCard}>
-        <Text style={styles.subtitle}>Weekly Summary</Text>
-        <Text style={styles.summaryText}>Total Steps: {totalSteps.toLocaleString()}</Text>
-        <Text style={styles.summaryText}>Cardio Minutes: {totalCardio}</Text>
-        <Text style={styles.summaryText}>Workout Days: {workoutDays}</Text>
-      </View>
-
-      {/* Collapsible Days */}
-      <ScrollView style={styles.daysList} showsVerticalScrollIndicator={false}>
-        {days.map((day) => {
-          const isToday = today === day.id;
-          const isOpen = openDay === day.id;
-
-          return (
-            <View key={day.id} style={[styles.daysCard, isToday && styles.todayHighlight]}>
-              {/* Header */}
-              <TouchableOpacity style={styles.dayHeader} onPress={() => toggleDay(day.id)}>
-                <View style={styles.iconWrapper}>
-                  <Ionicons name={day.icon} size={28} color="#4CAF50" />
-                </View>
-                <Text style={styles.daysName}>{day.name}</Text>
-                <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color="#666" />
+      {/* Step 1: Select Cardio Days + Minutes */}
+      {step === 1 && (
+        <>
+          <Text style={styles.title}>
+            Select cardio days and enter minutes (Goal: {cardioGoal} mins)
+          </Text>
+          {daysOfWeek.map((day) => (
+            <View key={day} style={{ marginBottom: 10 }}>
+              <TouchableOpacity
+                style={[
+                  styles.dayButton,
+                  cardioPlan[day] !== undefined && styles.selectedDay
+                ]}
+                onPress={() => toggleCardioDay(day)}
+              >
+                <Text style={styles.dayText}>{day}</Text>
               </TouchableOpacity>
-
-              {/* Expanded Content */}
-              {isOpen && (
-                <View style={styles.dayDetails}>
-                  <Text style={styles.daysDetails}>{day.description}</Text>
-                  <Text style={styles.progressText}>Cardio: {day.cardio} mins</Text>
-                  <Text style={styles.progressText}>Steps: {day.stepCount.toLocaleString()}</Text>
-
-                  <TouchableOpacity style={styles.viewButton} onPress={() => handleViewDetails(day)}>
-                    <Text style={styles.viewButtonText}>View Details</Text>
-                  </TouchableOpacity>
-                </View>
+              {cardioPlan[day] !== undefined && (
+                <TextInput
+                  style={styles.input}
+                  placeholder="Minutes"
+                  keyboardType="numeric"
+                  value={String(cardioPlan[day])}
+                  onChangeText={(val) => updateCardioMinutes(day, val)}
+                />
               )}
             </View>
-          );
-        })}
-      </ScrollView>
+          ))}
 
-      {/* Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{selectedDay?.name} Options</Text>
-            <Text style={styles.modalSubtitle}>{selectedDay?.description}</Text>
+          <Text style={styles.summary}>
+            Total Cardio: {totalCardioMinutes}/{cardioGoal} mins
+          </Text>
 
-            <TouchableOpacity style={styles.modalButton} onPress={handleEdit}>
-              <Text style={styles.modalButtonText}>✏️ Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalButton} onPress={handleComplete}>
-              <Text style={styles.modalButtonText}>✅ Mark Complete</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalButton, styles.deleteButton]} onPress={handleDelete}>
-              <Text style={styles.modalButtonText}>🗑️ Delete</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </View>
+          <TouchableOpacity
+            style={[
+              styles.nextButton,
+              totalCardioMinutes !== cardioGoal && { backgroundColor: 'gray' }
+            ]}
+            disabled={totalCardioMinutes !== cardioGoal}
+            onPress={savePlan}
+          >
+            <Text style={styles.nextText}>Save Plan</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa', padding: 20 },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 5, color: '#333', textAlign: 'center' },
-  subtitle: { fontSize: 16, color: '#666', marginBottom: 20, textAlign: 'center' },
-  summaryCard: { backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 20, elevation: 2 },
-  summaryText: { fontSize: 14, color: '#333', marginBottom: 5 },
-  daysList: { flex: 1 },
-  daysCard: { backgroundColor: '#fff', borderRadius: 12, marginBottom: 15, elevation: 2, overflow: 'hidden' },
-  todayHighlight: { borderWidth: 2, borderColor: '#4CAF50' },
-  dayHeader: { flexDirection: 'row', alignItems: 'center', padding: 15, justifyContent: 'space-between' },
-  iconWrapper: { marginRight: 10 },
-  daysName: { flex: 1, fontSize: 18, fontWeight: '600', color: '#333' },
-  dayDetails: { padding: 15, borderTopWidth: 1, borderTopColor: '#eee' },
-  daysDetails: { fontSize: 14, color: '#666', marginBottom: 5 },
-  progressText: { fontSize: 13, color: '#666', marginBottom: 3 },
-  viewButton: { marginTop: 10, backgroundColor: '#4CAF50', paddingVertical: 8, borderRadius: 20, alignItems: 'center' },
-  viewButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  button: { backgroundColor: '#4CAF50', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, marginBottom: 20, alignSelf: 'center' },
-  buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-
-  // Modal styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 20, width: '80%', alignItems: 'center' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 5, color: '#333' },
-  modalSubtitle: { fontSize: 14, color: '#666', marginBottom: 20 },
-  modalButton: { width: '100%', paddingVertical: 12, borderRadius: 8, backgroundColor: '#4CAF50', alignItems: 'center', marginBottom: 10 },
-  modalButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  deleteButton: { backgroundColor: '#E53935' },
-  closeButton: { marginTop: 10, paddingVertical: 10, paddingHorizontal: 20 },
-  closeButtonText: { color: '#4CAF50', fontWeight: '600' },
+  container: { flex: 1, padding: 20, backgroundColor: '#111827' },
+  title: { fontSize: 18, fontWeight: '600', color: '#fff', marginBottom: 20, textAlign: 'center' },
+  dayButton: { padding: 14, marginVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#ccc' },
+  selectedDay: { backgroundColor: '#4CAF50' },
+  dayText: { color: '#fff', fontSize: 16, textAlign: 'center' },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginTop: 5, color: '#fff' },
+  summary: { marginTop: 15, fontSize: 16, fontWeight: '600', color: '#fff', textAlign: 'center' },
+  nextButton: { marginTop: 20, backgroundColor: '#3B82F6', padding: 14, borderRadius: 8 },
+  nextText: { color: '#fff', fontWeight: '700', textAlign: 'center' }
 });

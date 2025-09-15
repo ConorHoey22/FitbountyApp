@@ -30,6 +30,7 @@ export default function RegisterScreen({ navigation }) {
               totalXP: 0,
               userLevel:0,
               UserHasEnteredTheirProfileDataTrigger: false,
+              UserHasWeeklyPlanSetup:false
             },
           ]);
 

@@ -108,6 +108,11 @@ function AppStack() {
         component={CreateMyPlan}
         options={{ title: 'Create a Plan' }}
       />
+        <Stack.Screen
+        name="PlanYourWeekScreen"
+        component={PlanYourWeekScreen}
+        options={{ title: 'Create a Plan' }}
+      />
        <Stack.Screen
         name="WeightTrackerScreen"
         component={WeightTrackerScreen}

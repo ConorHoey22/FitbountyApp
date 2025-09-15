@@ -4,7 +4,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar ,Activi
 import XPBar from '../components/XPBarLevel';
 import { Ionicons } from '@expo/vector-icons';
 import TrackerBar from '../components/TrackerBar';
+import TodayPlanCard from '../components/TodayPlanCard';
+
+
+// import { getProfile } from '../lib/getProfile';
+
 import { supabase } from '../lib/supabase';
+import { getProfile } from '../lib/GetProfile';
 
 const testUser = {
   nutrition: 2000,
@@ -35,46 +41,48 @@ export default function HomeScreen() {
 
   const navigation = useNavigation();
 
-  useEffect(() => {
 
-    const getProfile = async () => {
+   useEffect(() => {
+    const load = async () => {
       try {
         setLoading(true);
+        const profileData = await getProfile();
 
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-
-        // Fetch user profile row
-        const { data: profileData, error } = await supabase
-          .from('userProfiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-
-        // If profile exists but trigger is false → redirect
-        if (profileData && !profileData.UserHasEnteredTheirProfileDataTrigger) {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'CreateUserPlan' }],
-          });
-          return; // don’t set profile → avoid flashing wrong screen
+        if (!profileData.UserHasEnteredTheirProfileDataTrigger) {
+          navigation.reset({ index: 0, routes: [{ name: 'CreateUserPlan' }] });
+          return;
         }
-
+        
         setProfile(profileData);
+
+        checkWeeklySetupTrigger();
       } catch (err) {
-        console.error('Profile check error:', err.message);
+        console.error(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    getProfile();
-  }, [navigation]);
+    load();
+  }, []);
 
+   // Check if WeeklyPlan is setup or not - keep the user using the flow / how to use the app 
 
+   const checkWeeklySetupTrigger = async () => {
+    try {
+      const profileData = await getProfile();
+
+      if (!profileData.UserHasWeeklyPlanSetup) {
+        navigation.reset({ index: 0, routes: [{ name: 'PlanYourWeekScreen' }] });
+        return;
+      }
+
+      console.log('Weekly Plan already set:', profileData);
+    } catch (err) {
+      console.error('Weekly setup check error:', err.message);
+    }
+
+   };
 
   if (loading) {
     return (
@@ -108,6 +116,9 @@ export default function HomeScreen() {
             level={3}
          />
         
+        <View style={{ flex: 1, padding: 20, backgroundColor: '#111827' }}>
+          <TodayPlanCard profile={profile} />
+        </View>
 
     <View style={styles.nutritionContainer}>
   
@@ -146,11 +157,15 @@ export default function HomeScreen() {
         {/* Nutrition (light card to add contrast) */}
         <View style={styles.nutritionContainer}>
           <Text style={styles.sectionTitle}>Nutrition Overview</Text>
+ 
 
-          <View style={styles.nutritionCardLight}>
+          <TouchableOpacity style={styles.nutritionCardLight} onPress={() => navigation.navigate('RewardSystemScreen')} >
             <Text style={styles.caloriesValueLight}>{testUser.calories}</Text>
             <Text style={styles.caloriesLabelLight}>Calories</Text>
-          </View>
+
+            <TrackerBar/>
+            <Ionicons name="add-circle-outline" size={24} color="black"></Ionicons>
+          </TouchableOpacity>
 
           <View style={styles.macrosRow}>
 
@@ -173,7 +188,7 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
 
-            <View style={styles.macroCard} >
+            <View style={styles.macroCard}>
               <Text style={[styles.macroValue, { color: '#A78BFA' }]}>{testUser.fats}g</Text>
               <Text style={styles.macroLabel}>Fats</Text>
               <View style={styles.trackerWrap}>
@@ -252,6 +267,7 @@ const styles = StyleSheet.create({
   trackerWrap: {
     width: '100%',
     marginTop: -10,
+    alignItems: 'center',
   },
 
   // Text

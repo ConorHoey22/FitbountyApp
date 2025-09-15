@@ -19,8 +19,18 @@ Profile CTA button: Blue #2196F3.
 General app background (dark mode): Navy #232946.
 
 
-Currently working on : Registeration - Set up user screen - set the goal , fitness data , then we will start to pull that data into all screens - BUG on Weight amount and need backend funtion to update StepCount +2000 from what they entered
+Currently working on : Step plan added to , we need to get daily step goal , 
 
+Edit Plan aswell needs fixed - also stop placeholder from being 0 
+
+
+
+Add user data to My Profile and add it to grpahs etc
+
+Next step will be once the user Step 1 mode - Create a Daily Goal  , Weekly goal , Monthly goal -> screen moves to Plan out week -> then the user is brought to dashboard once they have the setup done
+
+
+Weekly Check in - Same process maybe not what measurement they want to use but same questions and make it mandatory as soon as they log in . 
 
 Profile design
 
