@@ -18,7 +18,7 @@ export default function XPTrophyCount() {
     
     <View style={styles.headerRow}>
   
-        <View style={styles.xpPill}>
+        <View style={styles.xpFill}>
           <Ionicons name="trophy-outline" size={16} color="#fff" />
           <Text style={styles.xpText}>{weeklyXp} XP</Text>
         </View>
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8f9fa', padding: 16 },
     headerRow: { flexDirection: 'row', alignItems: 'left',marginBottom: 8 },
     title: { fontSize: 24, fontWeight: 'bold', color: '#333' },
-    xpPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#4CAF50', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+    xpFill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'red', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
     xpText: { color: '#fff', fontWeight: '600', marginLeft: 6 },
     daysRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8 },
     dayChip: { flex: 1, marginHorizontal: 3, backgroundColor: '#e9ecef', paddingVertical: 8, borderRadius: 10, alignItems: 'center' },

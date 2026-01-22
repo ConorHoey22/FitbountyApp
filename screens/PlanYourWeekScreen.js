@@ -52,36 +52,7 @@ export default function PlanYourWeekScreen({ navigation }) {
 
   const totalCardioMinutes = Object.values(cardioPlan).reduce((a, b) => a + b, 0);
 
-  // const savePlan = async () => {
-  //   try {
-  //     const weeklyPlan = {};
-  //     selectedGymDays.forEach(day => {
-  //       weeklyPlan[day] = { type: 'Workout', cardio: 0 };
-  //     });
-  //     Object.entries(cardioPlan).forEach(([day, minutes]) => {
-  //       weeklyPlan[day] = { type: 'Cardio', cardio: minutes };
-  //     });
   
-  //     await AsyncStorage.setItem('weeklyPlan', JSON.stringify(weeklyPlan));
-  
-  //     // Update DB first
-  //     const { data: { user } } = await supabase.auth.getUser();
-  //     const { error } = await supabase
-  //       .from('userProfiles')
-  //       .update({
-  //         UserHasWeeklyPlanSetup: true,
-  //         lastupdate_at: new Date().toISOString(),
-  //       })
-  //       .eq('id', user.id);
-  
-  //     if (error) throw error;
-  
-  //     // Only navigate after DB update succeeds
-  //     navigation.replace('Home');
-  //   } catch (err) {
-  //     console.error('Save plan error:', err.message);
-  //   }
-  // };
   
 
   const savePlan = async () => {
@@ -109,7 +80,10 @@ export default function PlanYourWeekScreen({ navigation }) {
       if (error) throw error;
   
       // Only navigate after DB update succeeds
-      navigation.replace('Home');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
     } catch (err) {
       console.error('Save plan error:', err.message);
     }

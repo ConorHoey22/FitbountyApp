@@ -1,0 +1,32 @@
+
+Test Case  ( END to END)
+
+1. Register (PASS QA)
+    ➔ Validation
+        • Check all required fields
+        • Validate email format
+        • Validate password rules
+    ➔ Success
+        • Verify user is created in the database
+        • Does it auto-login? → Yes
+2. Create Plan (PASS QA)
+    ➔ User navigates to PlanYourWeekScreen
+    ➔ Select gym days (validate max days limit)
+    ➔ Select cardio days & enter minutes (validate total)
+    ➔ Save Plan
+        • Verify plan saved in AsyncStorage
+        • Verify database updated
+3. Create Weekly plan (PASS QA)
+        • Verify plan saved in AsyncStorage
+    ➔ Check if a new weekly entry is created for the user
+    ➔ Verify timestamp and related data
+
+4. User can Logout using Settings tab button -> Logout button  (PASS QA)
+
+5. Register again using same email -> Alert - User already exists ( PASS QA )
+6. Login -> have they a Plan -> Yes -> move to Home Screen ( PASS QA )
+7. Login -> have they a Plan -> No (Create Plan or Weekly )
+8. Able to update Weekly Plan (PASS QA)
+9. Able to update Profile / UserPlan 
+10. Able to Update Macros
+11. HomeScreen stats are loaded based on DB data

@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 export default function WorkoutsScreen() {
+
+  const navigation = useNavigation();
   const workouts = [
     { id: 1, name: 'Morning Cardio', duration: '30 min', calories: 250 },
     { id: 2, name: 'Strength Training', duration: '45 min', calories: 300 },
@@ -23,9 +26,9 @@ export default function WorkoutsScreen() {
                 {workout.duration} • {workout.calories} cal
               </Text>
             </View>
-            <View style={styles.workoutButton}>
+            <TouchableOpacity style={styles.workoutButton} onPress={() => navigation.navigate('WorkoutModeScreen')}> 
               <Text style={styles.workoutButtonText}>Start</Text>
-            </View>
+            </TouchableOpacity>
           </TouchableOpacity>
         ))}
       </ScrollView>

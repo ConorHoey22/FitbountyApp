@@ -22,6 +22,7 @@ export default function CreateUserPlan() {
     weightKg: '',
     weightStone: '',
     weightLbs: '',
+    weightPounds: '',
     workoutDays: '',
     steps: '',
     cardioMinutes: '',
@@ -30,18 +31,38 @@ export default function CreateUserPlan() {
   const questions = [
     { key: 'name', label: 'What is your name?', required: true, type: 'text' },
     { key: 'goal', label: 'What is your goal?', required: true, type: 'text' },
-    { key: 'unit', label: 'Which unit would you like to use? (KG, Stone, Lb)', required: true, type: 'unit' },
+    { key: 'unit', label: 'Which unit measurement would you like to use? (KG, Stone, Pounds)', required: true, type: 'unit' },
     { key: 'weight', label: 'What is your current weight?', required: false, type: 'weight' },
-    { key: 'workoutDays', label: 'How many days a week would you like to work out?', required: false, type: 'text' },
-    { key: 'steps', label: 'What is your daily step count?', required: false, type: 'text' },
-    { key: 'cardioMinutes', label: 'How many minutes of cardio do you do per week?', required: false, type: 'text' },
+    { key: 'workoutDays', label: 'How many days a week would you like to work out?', required: false, type: 'workoutDays' },
+    { key: 'steps', label: 'How many daily steps would you like to do?', required: false, type: 'steps' },
+    { key: 'cardioMinutes', label: 'How many minutes of cardio per week?', required: false, type: 'cardioMinutes' },
   ];
+
+  const [validationError, setValidationError] = useState('');
+
 
   const currentQ = questions[step];
 
   const handleNext = () => {
-    if (step < questions.length - 1) setStep(step + 1);
-    else handleSubmit();
+    const key = currentQ.key;
+    const value = answers[key];
+  
+
+    if (currentQ.required) {
+      if (!value || value.toString().trim() === '') {
+        setValidationError('This field is required');
+        return;
+      }
+    }
+  
+    // clear error if valid
+    setValidationError('');
+  
+    if (step < questions.length - 1) {
+      setStep(step + 1);
+    } else {
+      handleSubmit();
+    }
   };
 
   const handleSkip = () => {
@@ -65,8 +86,8 @@ export default function CreateUserPlan() {
         const stone = parseInt(answers.weightStone, 10) || 0;
         const lbs = parseInt(answers.weightLbs, 10) || 0;
         weightInKg = stone * 6.35029 + lbs * 0.453592;
-      } else if (answers.unit === 'Lb') {
-        weightInKg = (parseFloat(answers.weightLbs) || 0) * 0.453592;
+      } else if (answers.unit === 'Pounds') {
+        weightInKg = (parseFloat(answers.weightPounds) || 0) * 0.453592;
       }
 
       const { error } = await supabase
@@ -78,7 +99,7 @@ export default function CreateUserPlan() {
           startingWeight: weightInKg,
           currentWeight: weightInKg,
           workoutSessionsGoal: answers.workoutDays,
-          stepGoal: (parseInt(answers.steps, 10) || 0) + 2000,
+          stepGoal: answers.steps,
           cardioGoal: answers.cardioMinutes,
           UserHasEnteredTheirProfileDataTrigger: true,
           UserHasWeeklyPlanSetup:false,
@@ -87,7 +108,18 @@ export default function CreateUserPlan() {
         .eq('id', user.id);
 
       if (error) throw error;
-      navigation.replace('Home');
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'AppTabs',
+            state: {
+              index: 0,
+              routes: [{ name: 'Home' }],
+            },
+          },
+        ],
+      });
     } catch (err) {
       console.error('Submit error:', err.message);
     }
@@ -96,12 +128,17 @@ export default function CreateUserPlan() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
+      {validationError ? (
+  <Text style={{ color: '#EF4444', textAlign: 'center', marginBottom: 12 }}>
+    {validationError}
+  </Text>
+) : null}
       <Text style={styles.question}>{currentQ.label}</Text>
 
       {/* Unit selection */}
       {currentQ.type === 'unit' && (
         <View>
-          {['KG', 'Stone', 'Lb'].map((u) => (
+          {['KG', 'Stone', 'Pounds'].map((u) => (
             <TouchableOpacity
               key={u}
               style={[
@@ -122,11 +159,19 @@ export default function CreateUserPlan() {
           style={styles.input}
           placeholder="Enter weight in KG"
           placeholderTextColor={theme.textMuted}
-          keyboardType="numeric"
+          keyboardType="decimal-pad"
           value={answers.weightKg}
-          onChangeText={(val) => handleChange('weightKg', val)}
+          onChangeText={(val) => {
+            const numeric = val
+              .replace(/[^0-9.]/g, '')
+              .replace(/(\..*)\./g, '$1');
+            handleChange('weightKg', numeric);
+          }}
         />
       )}
+
+
+
 
       {currentQ.type === 'weight' && answers.unit === 'Stone' && (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -134,31 +179,108 @@ export default function CreateUserPlan() {
             style={[styles.input, { flex: 1, marginRight: 5 }]}
             placeholder="Stone"
             placeholderTextColor={theme.textMuted}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             value={answers.weightStone}
-            onChangeText={(val) => handleChange('weightStone', val)}
+            onChangeText={(val) => {
+              const numeric = val
+                .replace(/[^0-9.]/g, '')
+                .replace(/(\..*)\./g, '$1');
+              handleChange('weightStone', numeric);
+            }}
           />
           <TextInput
             style={[styles.input, { flex: 1, marginLeft: 5 }]}
             placeholder="Lbs"
             placeholderTextColor={theme.textMuted}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             value={answers.weightLbs}
-            onChangeText={(val) => handleChange('weightLbs', val)}
+            onChangeText={(val) => {
+              const numeric = val
+                .replace(/[^0-9.]/g, '')
+                .replace(/(\..*)\./g, '$1');
+              handleChange('weightLbs', numeric);
+            }}
+
           />
         </View>
       )}
 
-      {currentQ.type === 'weight' && answers.unit === 'Lb' && (
+      {currentQ.type === 'weight' && answers.unit === 'Pounds' && (
         <TextInput
           style={styles.input}
-          placeholder="Enter weight in Lbs"
+          placeholder="Enter weight in pounds"
           placeholderTextColor={theme.textMuted}
-          keyboardType="numeric"
-          value={answers.weightLbs}
-          onChangeText={(val) => handleChange('weightLbs', val)}
+          keyboardType="decimal-pad"
+          value={answers.weightPounds}
+
+          onChangeText={(val) => {
+            const numeric = val
+              .replace(/[^0-9.]/g, '')
+              .replace(/(\..*)\./g, '$1');
+            handleChange('weightPounds', numeric);
+          }}
         />
       )}
+
+
+
+       {/* Number of days (Workout) - MAX is 7 */}
+       
+      {currentQ.type === 'workoutDays' && (
+          <TextInput
+            style={styles.input}
+            placeholder="Enter here"
+            placeholderTextColor={theme.textMuted}
+            keyboardType="number-pad"
+            value={answers.workoutDays}
+            onChangeText={(val) => {
+              const numeric = val.replace(/[^0-9]/g, '');
+
+              // Optional: cap between 0 and 7
+              if (numeric === '' || (+numeric >= 0 && +numeric <= 7)) {
+                handleChange('workoutDays', numeric);
+              }
+            }}
+          />
+        )}
+
+
+      {/* Number of Minutes of Cardio per week  */}
+       
+      {currentQ.type === 'cardioMinutes' && (
+          <TextInput
+            style={styles.input}
+            placeholder="Enter here"
+            placeholderTextColor={theme.textMuted}
+            keyboardType="number-pad"
+            value={answers.cardioMinutes}
+            onChangeText={(val) => {
+              const numeric = val.replace(/[^0-9]/g, '');
+
+                handleChange('cardioMinutes', numeric);
+              
+            }}
+          />
+        )}
+
+           {/* Number of steps per day */}
+       
+      {currentQ.type === 'steps' && (
+          <TextInput
+            style={styles.input}
+            placeholder="Enter here"
+            placeholderTextColor={theme.textMuted}
+            keyboardType="number-pad"
+            value={answers.steps}
+            onChangeText={(val) => {
+              const numeric = val.replace(/[^0-9]/g, '');
+
+                handleChange('steps', numeric);
+              
+            }}
+          />
+        )}
+
 
       {/* Default text input */}
       {currentQ.type === 'text' && (

@@ -5,19 +5,33 @@ import { supabase } from '../lib/supabase';
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  
 
+
+
+
+  
   const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert("Password Error", "Passwords do not match.");
+      return;
+    }
+  
     try {
       setLoading(true);
-
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          shouldCreateSession: false
+        }
       });
-
+  
       if (error) throw error;
-
+  
       // Insert into userProfiles
       if (data?.user) {
         const { error: profileError } = await supabase
@@ -26,21 +40,32 @@ export default function RegisterScreen({ navigation }) {
             {
               id: data.user.id,
               first_name: '',
+              goal: answers.goal,
+              unitMeasurement: '',
+              startingWeight: '',
+              currentWeight: '',
+              workoutSessionsGoal: '',
+              stepGoal: '',
+              cardioGoal: '',
               created_at: new Date().toISOString(),
               totalXP: 0,
-              userLevel:0,
+              userLevel: 0,
+              calories: '',
+              protein: '' ,
+              carbohydrates: '',
+              fats: '',
               UserHasEnteredTheirProfileDataTrigger: false,
-              UserHasWeeklyPlanSetup:false
+              UserHasWeeklyPlanSetup: false,
+              UserHasMacros:false,
+
             },
           ]);
-
+  
         if (profileError) {
           console.error('Profile insert error:', profileError.message);
         }
       }
-
-      Alert.alert('Success', 'Account created! Please verify your email.');
-
+  
 
     } catch (err) {
       Alert.alert('Error', err.message);
@@ -52,6 +77,7 @@ export default function RegisterScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Register</Text>
+
       <TextInput
         placeholder="Email"
         value={email}
@@ -59,6 +85,7 @@ export default function RegisterScreen({ navigation }) {
         style={styles.input}
         autoCapitalize="none"
       />
+
       <TextInput
         placeholder="Password"
         value={password}
@@ -66,6 +93,15 @@ export default function RegisterScreen({ navigation }) {
         style={styles.input}
         secureTextEntry
       />
+
+      <TextInput
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        style={styles.input}
+        secureTextEntry
+      />
+
       <Button title={loading ? 'Loading...' : 'Register'} onPress={handleRegister} />
     </View>
   );

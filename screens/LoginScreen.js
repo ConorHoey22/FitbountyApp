@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
@@ -24,20 +24,57 @@ export default function LoginScreen() {
     };
   }, [navigation]);
 
-  const handleLogin = async () => {
-    setError('');
-    setLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password
-    });
-    setLoading(false);
-    if (signInError) {
-      setError(signInError.message);
-      return;
-    }
+  // const handleLogin = async () => {
+  //   setError('');
+  //   setLoading(true);
+  //   const { error: signInError } = await supabase.auth.signInWithPassword({
+  //     email: email.trim(),
+  //     password
+  //   });
+  //   setLoading(false);
+  //   if (signInError) {
+  //     setError(signInError.message);
+  //     return;
+  //   }
   
+  // };
+
+  const handleLogin = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+  
+      // Get profile
+      const profile = await getProfile(data.user.id);
+  
+      if (!profile) {
+        // First login: no profile yet
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'CreateUserPlan' }],
+        });
+      } else {
+        // Normal login
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'HomeScreen' }],
+        });
+      }
+
+    
+    } catch (err) {
+
+       alert("Please enter your Login details or sign up");
+
+    }
   };
+  
+
+
+
 
   return (
     <View style={styles.container}>

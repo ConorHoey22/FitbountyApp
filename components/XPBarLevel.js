@@ -1,83 +1,106 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-
+import { LinearGradient } from 'expo-linear-gradient';
+import Divider from './Divider';
 
 const theme = {
-  // Dim hybrid palette
-  bg: '#111827',            // slate-900 (dark, not black)
-  surface: '#1E293B',       // slate-800 (mid card)
-  surfaceAlt: '#0F172A',    // slate-900/indigo tint (header/alt)
-  surfaceLight: '#F1F5F9',  // slate-100 (light card to break up darkness)
-  border: '#334155',        // slate-700
-  text: '#E5E7EB',          // light text on dark
-  textMuted: '#9CA3AF',     // muted on dark
-  textOnLight: '#0F172A',   // dark text on light cards
-  primary: '#3B82F6',       // blue
-  success: '#22C55E',       // green
-  warning: '#F59E0B',       // amber
+  bg: '#111827',
+  surface: '#1E293B',
+  surfaceAlt: '#0F172A',
+  surfaceLight: '#F1F5F9',
+  border: '#334155',
+  text: '#E5E7EB',
+  textMuted: '#9CA3AF',
+  textOnLight: '#0F172A',
+  primary: '#3B82F6',
+  success: '#22C55E',
+  warning: '#F59E0B',
+  color : '#FF8A00',     // Default start color (Calories orange)
+  endColor : '#FFB84D'
 };
 
-
-export default function XPBarLevel({ currentXP = 350, levelXP = 500, level = 3 }) {
-  const progress = Math.min(currentXP / levelXP, 1); // progress capped at 100%
-
-
-
-
+export default function XPBarLevel({ currentXP = 10, levelXP = 100, level = 3 }) {
+  const progress = Math.min(currentXP / levelXP, 1); // 0 → 1
 
   return (
     <View style={styles.container}>
-      <Text style={styles.levelText}>Level {level}</Text>
+      <Text style={styles.primaryTextColor}>
+        LEVEL {level}
+      </Text>
+     
+      <Text style={styles.primaryTextColor}> {currentXP} <Text style={styles.secondaryTextColor}>/ {levelXP} XP </Text> </Text>
+        
+     
+
       <View style={styles.barBackground}>
-        <View style={[styles.barFill, { flex: progress }]} />
+        {/* Progress fill */}
+        <View style={[styles.barFillContainer, { flex: progress }]}>
+          <LinearGradient
+            colors={['#FF8A00', '#FFB84D']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.barFillGradient}
+          />
+        </View>
+
+        {/* Empty space */}
         <View style={{ flex: 1 - progress }} />
       </View>
-      <Text style={styles.macroLabelMedium}>
-        {currentXP} / {levelXP} 
-      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 30,
-    marginBottom: 20,
+    marginTop: 10,
+    marginBottom: 10,
     alignItems: 'center',
   },
-  levelText: {
-
-      fontSize: 18,
-      fontWeight: '700',
-      color: theme.text,
- 
+  title: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 6,
+    color: theme.text,
+    textAlign: 'center',
+  },
+  xpText: {
+    color: theme.textMuted,
   },
   barBackground: {
-    flexDirection: 'row',
-    height: 10,
+    flexDirection: 'row', // horizontal fill
+    height: 12,
     width: '90%',
-    backgroundColor: '#e0e0e0',
+    backgroundColor: theme.surface,
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 8,
   },
-  barFill: {
-    backgroundColor: '#4CAF50',
+  barFillContainer: {
+    height: '100%',
     borderRadius: 12,
+    overflow: 'hidden',
   },
-  macroLabelSmall: {
-    fontSize: 12,
-    color: theme.textMuted,
+  boldBlackText:
+  {
+   color: 'black', fontSize: 16, fontWeight: '700'
   },
-  macroLabelMedium: {
-    fontSize: 15,
-    color: theme.textMuted,
+  barFillGradient: {
+    flex: 1, // fill the container width
   },
-  macroLabelLarge: {
-    fontSize: 25,
-    color: theme.textMuted,
-  },
+    subtitle: { fontSize: 14, color: theme.text, marginBottom: 22, textAlign: 'center' },
+    primaryTextColor: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
+      textShadowColor: 'transparent',
+      opacity: 1,
+      padding:5
+    },
+    secondaryTextColor: {
+      fontSize: 14,
+      color: '#A0A3A8',
+      fontWeight: '500',
+      marginTop: 4,
+    },
 
-
-
-});
+  });

@@ -1,89 +1,183 @@
 import React, { useEffect, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation } from '@react-navigation/native';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar ,ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar ,ActivityIndicator, Image } from 'react-native';
 import XPBar from '../components/XPBarLevel';
 import { Ionicons } from '@expo/vector-icons';
 import TrackerBar from '../components/TrackerBar';
 import TodayPlanCard from '../components/TodayPlanCard';
-
-
-// import { getProfile } from '../lib/getProfile';
+import Card from '../lib/assets/Card';
 
 import { supabase } from '../lib/supabase';
 import { getProfile } from '../lib/GetProfile';
+import Divider from '../components/Divider';
 
 const testUser = {
   nutrition: 2000,
   calories:2000,
   protein:130,
   carbs:100,
-  fats:40
+  fats:10
 }
 
-const theme = {
-  // Dim hybrid palette
-  bg: '#111827',            // slate-900 (dark, not black)
-  surface: '#1E293B',       // slate-800 (mid card)
-  surfaceAlt: '#0F172A',    // slate-900/indigo tint (header/alt)
-  surfaceLight: '#F1F5F9',  // slate-100 (light card to break up darkness)
-  border: '#334155',        // slate-700
-  text: '#E5E7EB',          // light text on dark
-  textMuted: '#9CA3AF',     // muted on dark
-  textOnLight: '#0F172A',   // dark text on light cards
-  primary: '#3B82F6',       // blue
-  success: '#22C55E',       // green
-  warning: '#F59E0B',       // amber
-};
+
+// 🎨 Dark Mode FitBounty Theme
+// Background (main dark): #0E1116
+// Card / Section background: #1C1F26
+// Primary text (white): #FFFFFF
+// Secondary text (gray): #A0A3A8
+// XP / Progress orange: #FF8A00
+// Protein yellow: #FFD43B
+// Carbs green: #3DDC97
+// Fats blue: #3B82F6
+// Accent button orange: #FF8A00
+// Accent button blue: #2563EB
+
+
 
 export default function HomeScreen() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+
+  //Macros Goals 
+  const [caloriesGoal , SetCaloriesGoal]  = useState();
+  const [proteinGoal , SetProteinGoal]  = useState();
+  const [carbohydratesGoal , SetCarbohydratesGoal]  = useState();
+  const [fatsGoal , SetFatsGoal]  = useState();
+
+
+  //Fitness Weekly Goals 
+  const [cardioGoal , SetCardioGoal] = useState();
+  const [stepsGoal , SetStepsGoal] = useState();
+  const [workoutSessionsGoal , SetWorkoutSesssionsGoal] = useState();
+
   const navigation = useNavigation();
 
 
-   useEffect(() => {
+    // This data needs pulled from DB
+
+    const caloriesCurrentAmount = 1000
+    const proteinCurrentAmount =  10
+    const carbsCurrentAmount =  75
+    const fatsCurrentAmount =  5
+
+
+    //This should be manually entered but not hooked up 
+    const cardioWeeklyProgress = 100
+    const workoutWeeklyProgress =  1
+    const stepsWeeklyProgress =  75
+
+
+
+
+
+
+
+
+  const images = [
+    require('../lib/assets/maleRunning.png')
+  ];
+
+  useEffect(() => {
     const load = async () => {
-      try {
-        setLoading(true);
-        const profileData = await getProfile();
 
-        if (!profileData.UserHasEnteredTheirProfileDataTrigger) {
-          navigation.reset({ index: 0, routes: [{ name: 'CreateUserPlan' }] });
-          return;
-        }
-        
-        setProfile(profileData);
+    try {
+      setLoading(true);
 
-        checkWeeklySetupTrigger();
-      } catch (err) {
-        console.error(err.message);
-      } finally {
-        setLoading(false);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        return;
       }
-    };
 
+      const profileData = await getProfile(session.user.id);
+
+
+      // No profile row found — first login
+      if (!profileData) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'CreateUserPlan' }],
+        });
+        return;
+      }
+
+      // Profile DB Trigger check 
+      if (!profileData.UserHasEnteredTheirProfileDataTrigger) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'CreateUserPlan' }],
+        });
+        return;
+      }
+
+      // Weekly Plan DB Trigger check 
+      if (!profileData.UserHasWeeklyPlanSetup) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'PlanYourWeekScreen' }],
+        });
+        return;
+      }
+
+
+      // If User has Profiledata & Weekly plan setup but not Macros  
+      if(profileData.UserHasEnteredTheirProfileDataTrigger && profileData.UserHasEnteredTheirProfileDataTrigger && !profileData.UserHasMacros)
+      {
+          console.log("User does not have macros");
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'AddMacros' }],
+          });
+          return;
+
+      }
+
+      //Get Profile
+      setProfile(profileData);
+      
+      //Macros
+      SetCaloriesGoal(profileData.calories);
+      SetProteinGoal(profileData.protein);
+      SetCarbohydratesGoal(profileData.carbohydrates);
+      SetFatsGoal(profileData.fats);
+
+      //Fitness Goals
+      SetCardioGoal(profileData.cardioGoal);
+      SetStepsGoal(profileData.stepGoal);
+      SetWorkoutSesssionsGoal(profileData.workoutSessionsGoal);
+
+    } catch (err) {
+      console.error('Home Screen load error:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  
     load();
   }, []);
 
-   // Check if WeeklyPlan is setup or not - keep the user using the flow / how to use the app 
-
-   const checkWeeklySetupTrigger = async () => {
+  const checkWeeklySetupTrigger = async () => {
     try {
       const profileData = await getProfile();
-
       if (!profileData.UserHasWeeklyPlanSetup) {
         navigation.reset({ index: 0, routes: [{ name: 'PlanYourWeekScreen' }] });
         return;
       }
-
       console.log('Weekly Plan already set:', profileData);
     } catch (err) {
       console.error('Weekly setup check error:', err.message);
     }
+  };
 
-   };
 
+  
   if (loading) {
     return (
       <View style={styles.center}>
@@ -100,291 +194,701 @@ export default function HomeScreen() {
     );
   }
 
-    return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
+  return (
+      <View style={{ flex: 1,  padding:20 }}>
+      {/* <StatusBar barStyle="light-content" backgroundColor={theme.bg} /> */}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
 
-        <Text style={styles.title}>Welcome to FitBounty, {profile.first_name || 'Friend'} </Text>
-        <Text style={styles.subtitle}>Your fitness journey starts here</Text>
-
-        {/* Level Progress (mid-tone card) */}
-
-          <XPBar
-            currentXP={350}
-            levelXP={500}
-            level={3}
-         />
-        
-        <View style={{ flex: 1, padding: 20, backgroundColor: '#111827' }}>
-          <TodayPlanCard profile={profile} />
-        </View>
-
-    <View style={styles.nutritionContainer}>
+      {images.map((img, idx) => (
+          <Image key={idx} source={img} style={styles.image} resizeMode="contain" />
+        ))}
+        {/* Card 1  */}
+        <Card>
   
-     <Text style={styles.sectionTitle}>My Fitness Goals</Text> 
-    </View>
-        {/* Cardio */}
-        <View style={styles.statsContainer}>
+        <Text style={styles.title}>Welcome to FitBounty, {profile.first_name || 'Friend'}</Text>
+        <Text style={styles.subtitle}>Your fitness journey starts here</Text>
+    
 
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>Cardio : 0 / {profile.cardioGoal || 0} Minutes</Text>
-              <View style={styles.trackerWrap}>
-                
-                <TrackerBar
-                />
-              </View>
+        <XPBar currentXP={350} levelXP={500} level={3} />
+         
+        </Card>
 
-          {/* Steps */}
-              <Text style={styles.statValue}>Steps : 0 / {profile.stepGoal || 0}</Text>
-              <View style={styles.trackerWrap}>
-                <TrackerBar
-                />
-              </View>
 
-          {/* Workouts */}
-              <Text style={styles.statValue}>Workouts : 0 / {profile.workoutSessionsGoal || 0} </Text>
-              <View style={styles.trackerWrap}>
-                <TrackerBar
-                />
-      
-              </View>
+        <View style={styles.headerRow}>
+ 
+  
+          <View style={styles.headerLeft}>      
+            <Text style={styles.title}>Plan For Today </Text>  
+          </View>
 
-            </View>
+          {/* RIGHT COLUMN */}
+              <View style={styles.headerRight}>
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            paddingHorizontal: 8,
+                            paddingVertical: 8,
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: "#4C8DFF",
+                            backgroundColor: "rgba(76,141,255,0.08)",
+                          }}
+                          onPress={() => navigation.navigate("AddMacros")}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="options-outline" size={16} color="#4C8DFF" />
+                          <Text style={styles.updateButtonText}>Update Plan</Text>
+                        </TouchableOpacity>
+                      </View>        
+
         </View>
+    
+      
+      
+          <TodayPlanCard profile={profile} />
+      
+          <View style={styles.headerRow}>
 
-
-        {/* Nutrition (light card to add contrast) */}
-        <View style={styles.nutritionContainer}>
-          <Text style={styles.sectionTitle}>Nutrition Overview</Text>
- 
-
-          <TouchableOpacity style={styles.nutritionCardLight} onPress={() => navigation.navigate('RewardSystemScreen')} >
-            <Text style={styles.caloriesValueLight}>{testUser.calories}</Text>
-            <Text style={styles.caloriesLabelLight}>Calories</Text>
-
-            <TrackerBar/>
-            <Ionicons name="add-circle-outline" size={24} color="black"></Ionicons>
-          </TouchableOpacity>
-
-          <View style={styles.macrosRow}>
-
-            <TouchableOpacity style={styles.macroCard} onPress={() => navigation.navigate('RewardSystemScreen')}>
-              <Text style={[styles.macroValue, { color: theme.primary }]}>{testUser.protein}g</Text>
-              <Text style={styles.macroLabel}>Protein</Text>
-              <View style={styles.trackerWrap}>
-                <TrackerBar/>       
-                <Ionicons name="add-circle-outline" size={24} color="white"  onPress={() => navigation.navigate('RewardSystemScreen')} ></Ionicons>
-              </View>
-           
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.macroCard} onPress={() => navigation.navigate('RewardSystemScreen')}>
-              <Text style={[styles.macroValue, { color: '#38BDF8' }]}>{testUser.carbs}g</Text>
-              <Text style={styles.macroLabel}>Carbs</Text>
-              <View style={styles.trackerWrap}>
-                <TrackerBar/>
-                <Ionicons name="add-circle-outline" size={24} color="white"  onPress={() => navigation.navigate('RewardSystemScreen')} ></Ionicons>
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.macroCard}>
-              <Text style={[styles.macroValue, { color: '#A78BFA' }]}>{testUser.fats}g</Text>
-              <Text style={styles.macroLabel}>Fats</Text>
-              <View style={styles.trackerWrap}>
-                <TrackerBar/>
-              <Ionicons name="add-circle-outline" size={24} color="white"  onPress={() => navigation.navigate('RewardSystemScreen')} ></Ionicons>
-              </View>
-
- 
-       
+            {/* LEFT COLUMN */}
+            <View style={styles.headerLeft}>
+              <Text style={styles.title}>Macros</Text>
             </View>
 
+            {/* RIGHT COLUMN */}
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 8,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: "#4C8DFF",
+                  backgroundColor: "rgba(76,141,255,0.08)",
+                }}
+                onPress={() => navigation.navigate("AddMacros")}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="options-outline" size={16} color="#4C8DFF" />
+                <Text style={styles.updateButtonText}>Update Macros</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+    
+
+       {/* Macros Row 1  */}
+       <View style={styles.macrosContainer}>
+
+          <View style={styles.row}>   
+
+              <LinearGradient
+                  colors={['#1E293B', '#1E293B']} // base dark gradient for the card
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientCardOuter}
+                >
+
+                  <LinearGradient
+                    colors={['#0F172A', '#0F172A']} // accent gradient ring
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gradientCardInner}
+                  >
+  
+                      <Text style={styles.cardTitle}>Calories</Text>
+                      <Text style={styles.cardValue}>
+                        {caloriesCurrentAmount} / {caloriesGoal}
+                      </Text>
+
+
+                      <View style ={{ padding: 5 }}>
+                        <TrackerBar
+                      
+                          currentAmount={caloriesCurrentAmount}
+                          totalAmount={caloriesGoal}
+                        />
+                      </View>
+              
+
+
+                  </LinearGradient>
+                </LinearGradient>
+
+              {/* Card 2 */}
+              <LinearGradient
+                  colors={['#1E293B', '#1E293B']}  // base dark gradient for the card
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientCardOuter}
+                >
+
+                  <LinearGradient
+                    colors={['#0F172A', '#0F172A']} // accent gradient ring
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gradientCardInner}
+                  >
+         
+                      <Text style={styles.cardTitle}>Protein</Text>
+                      <Text style={styles.cardValue}>
+                        {proteinCurrentAmount} / {proteinGoal}
+                      </Text>
+
+                      <View style ={{ padding: 5 }}>
+                      <TrackerBar
+                     
+                        currentAmount={proteinCurrentAmount}
+                        totalAmount={proteinGoal}
+                      />
+                      </View>
+
+                  </LinearGradient>
+                </LinearGradient>
+
+
+
+                
+           </View>
+   
+
+   {/* Row 2 */}
+           <View style={styles.row}>   
+           <LinearGradient
+                  colors={['#1E293B', '#1E293B']} // base dark gradient for the card
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientCardOuter}
+                >
+
+                  <LinearGradient
+                    colors={['#0F172A', '#0F172A']} // accent gradient ring
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gradientCardInner}
+                  >
+   
+                      <Text style={styles.cardTitle}>Carbs</Text>
+                      <Text style={styles.cardValue}>
+                        {carbsCurrentAmount} / {carbohydratesGoal}
+                      </Text>
+
+                      <View style ={{ padding: 5 }}>
+                      <TrackerBar
+                  
+                        currentAmount={carbsCurrentAmount}
+                        totalAmount={carbohydratesGoal}
+                      />
+                      </View>
+              
+
+
+                  </LinearGradient> 
+                </LinearGradient>
+                
+                 {/* Card 2 */}
+              <LinearGradient
+                  colors={['#1E293B', '#1E293B']} // base dark gradient for the card
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientCardOuter}
+                >
+
+                  <LinearGradient
+                    colors={['#0F172A', '#0F172A']} // accent gradient ring
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gradientCardInner}
+                  >
+                  
+                      <Text style={styles.cardTitle}>Fats</Text>
+                      <Text style={styles.cardValue}>
+                        {fatsCurrentAmount} / {fatsGoal}
+                      </Text>
+
+                      <View style ={{ padding: 5 }}>
+                      <TrackerBar
+             
+                        currentAmount={fatsCurrentAmount}
+                        totalAmount={fatsGoal}
+                      />
+                      </View>
+              
+
+
+                  </LinearGradient>
+                </LinearGradient>
+
+            </View>
 
           </View>
-        </View>
+
+   
+
+
+
+          <View style={styles.headerRow}>
+
+              {/* LEFT COLUMN */}
+              <View style={styles.headerLeft}>
+                <Text style={styles.title}>Weekly Goals</Text> 
+              </View>
+                 {/* RIGHT COLUMN */}
+                 <View style={styles.headerRight}>
+                 <TouchableOpacity
+                  style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 8,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: "#4C8DFF",
+                  backgroundColor: "rgba(76,141,255,0.08)",
+                }}
+                onPress={() => navigation.navigate("AddMacros")}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="options-outline" size={16} color="#4C8DFF" />
+                <Text style={styles.updateButtonText}>Update Goals</Text>
+              </TouchableOpacity>
+            </View>
+         
+          </View>
+       
+        <View style={styles.macrosContainer}>
+        <View style={styles.row}>   
+      
+                  <LinearGradient
+                    colors={['#1E293B', '#1E293B']} // base dark gradient for the card
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gradientCardOuter}
+                  >
+
+                        <LinearGradient
+                          colors={['#0F172A', '#0F172A']} // accent gradient ring
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.gradientCardInner}
+                        >
+                        <Ionicons name="bicycle-outline" size={28} color="#fff" />
+                          <Text style={styles.cardTitle}>Cardio</Text>
+
+                          {/* DB data here needed */}
+                     
+                          <Text style={styles.cardValue}>{cardioWeeklyProgress} <Text style={styles.cardValue}> / {cardioGoal}</Text></Text>
+
+                          <View style ={{ padding: 5 }}>
+
+                            <TrackerBar
+                 
+                              currentAmount={cardioWeeklyProgress}
+                              totalAmount={cardioGoal}
+                            />
+
+                          </View>
+
+
+                        </LinearGradient>
+
+                  </LinearGradient>
+
+
+                  <LinearGradient
+                    colors={['#1E293B', '#1E293B']} // base dark gradient for the card
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gradientCardOuter}
+                  >
+
+                        <LinearGradient
+                          colors={['#0F172A', '#0F172A']}  // accent gradient ring
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.gradientCardInner}
+                        >
+                          <Ionicons name="gift-outline" size={28} color="#fff" />
+                            <Text style={styles.cardTitle}>Weekly Rewards</Text>
+                            <Text style={styles.cardValue}>{workoutWeeklyProgress} <Text style={styles.cardValue}> / {workoutSessionsGoal}</Text></Text>
+
+
+
+                          <View style ={{ padding: 5 }}>
+
+                            <TrackerBar              
+                           
+                            currentAmount={workoutWeeklyProgress} totalAmount={workoutSessionsGoal} />
+
+                          </View>
+                    
+                        </LinearGradient>
+                        
+                        </LinearGradient> 
+
+                  </View>
+
+
+                  <View style={styles.row}>   
+
+                    <LinearGradient
+                      colors={['#1E293B', '#1E293B']} // base dark gradient for the card
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.gradientCardOuter}
+                    >
+
+                          <LinearGradient
+                            colors={['#0F172A', '#0F172A']} // accent gradient ring
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.gradientCardInner}
+                          >
+                          <Ionicons name="footsteps-outline" size={28} color="#fff" />
+                            <Text style={styles.cardTitle}>Steps</Text>
+                           
+                            <Text style={styles.cardValue}>{stepsWeeklyProgress} <Text style={styles.cardValue}> / {stepsGoal}</Text></Text>
+                      
+
+                            <View style ={{ padding: 5 }}>
+
+                              <TrackerBar         
+                            
+                                currentAmount={stepsWeeklyProgress} totalAmount={stepsGoal}
+                              />
+
+                            </View>
+
+                            </LinearGradient> 
+
+                    </LinearGradient> 
+
+
+                  <LinearGradient
+                    colors={['#1E293B', '#1E293B']} // base dark gradient for the card
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gradientCardOuter}
+                  >
+
+                        <LinearGradient
+                          colors={['#0F172A', '#0F172A']} // accent gradient ring
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.gradientCardInner}
+                        >
+                          <Ionicons name="barbell-outline" size={28} color="#fff" />
+                            <Text style={styles.cardTitle}>Workouts</Text>
+                            <Text style={styles.cardValue}>{workoutWeeklyProgress} <Text style={styles.cardValue}> / {workoutSessionsGoal}</Text></Text>
+
+
+                        <View style ={{ padding: 5 }}>
+                          <TrackerBar      
+                         
+                              currentAmount={workoutWeeklyProgress} totalAmount={workoutSessionsGoal} />
+
+                        </View>
+                        
+                        </LinearGradient>
+                        
+                        </LinearGradient> 
+                
+                  </View>
+
+         
+
+                  </View>
+
 
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('RewardSystemScreen')}>
-            <Text style={styles.actionButtonText}>Reward System</Text>
+  
+
+
+        <View>
+          {/* Update button */}
+           <TouchableOpacity
+            style={[styles.button, styles.updateButton]}
+            onPress={() => navigation.navigate('PlanYourWeekScreen')}
+          >
+            <Ionicons name="gift-outline" size={22} color="#fff" style={styles.buttonIcon} />
+            <Text style={styles.actionButtonText}> Reward System</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={() => navigation.navigate('WeightTrackerScreen')}>
-            <Text style={styles.secondaryButtonText}>View Progress</Text>
-          </TouchableOpacity>
-        </View>
+        </View> 
+
+        <View>
+          
+           <TouchableOpacity 
+              style={[styles.button, styles.updateButton]}
+              onPress={() => navigation.navigate('WeightTrackerScreen')}>
+
+             <Ionicons name="bar-chart-outline" size={22} color= "#fff" style={styles.buttonIcon} />
+            <Text style={styles.actionButtonText}> View Progress</Text>
+          </TouchableOpacity> 
+         </View>
+
+
+
+         {/* </View>  */}
+
       </ScrollView>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  // Base
   container: {
     flex: 1,
-    backgroundColor: theme.bg,
-    padding: 40,
+    backgroundColor: '#0E1116',
+    padding: 20,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    marginTop:10
+  },
+  
+  headerLeft: {
+    flex: 1,              // 👈 takes remaining space
+  },
+  
+  headerRight: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  
+  updateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#4C8DFF",
+  },
+  
+  updateButtonText: {
+    color: "#4C8DFF",
+    fontSize: 13,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  
+  
+  
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 6,
-    color: theme.text,
-    textAlign: 'center',
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#fff",
   },
+  
+  rowCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  leftSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6, // optional, RN 0.71+
+  },
+
+  rowCardNoBackground: {
+
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  
+
+  // Titles
+  title: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '700',
+    textShadowColor: 'transparent',
+    opacity: 1,
+    marginBottom: 10,
+    marginTop: 18,
+  },
+  rowCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  leftSide: {
+    flexDirection: 'column',
+  },
+
   subtitle: {
+    fontSize: 16,
+    color: '#A0A3A8',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  primaryTextColor: {
+    color: '#FFFFFF',
     fontSize: 14,
-    color: theme.textMuted,
-    marginBottom: 22,
-    textAlign: 'center',
+    fontWeight: '700',
+    textShadowColor: 'transparent',
+    opacity: 1,
+  },
+  secondaryTextColor: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+
+  blackTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 10,
+    marginTop: 18,
+  },
+
+  // Image
+  image: {
+    width: '100%',
+    height: 120,
+    marginBottom: -10,
   },
 
   // Cards
-  cardPadded: {
-    backgroundColor: theme.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: theme.border,
+  statCardCompact: {
+    flex: 1,
+    backgroundColor: '#1C1F26',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    shadowColor: 'transparent', // no glow
   },
-  statsContainer: {
+  WeeklyFitnessCardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  statCard: {
-    backgroundColor: theme.surface,
-    borderRadius: 14,
-    paddingTop:20,
-    padding: 7,
-    alignItems: 'flex-start', 
-    flex: 1,
-    marginHorizontal: 5,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  trackerWrap: {
-    width: '100%',
-    marginTop: -10,
-    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
   },
 
-  // Text
-  statValue: {
-    fontSize: 14,
-    fontWeight: '350',
-    color: theme.text,
-    alignItems: 'flex-start', 
+  // Labels and text
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginVertical: 6,
   },
-  statUnit: {
-    fontSize: 12,
-    color: theme.textMuted,
-    marginBottom: 5,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: theme.text,
-    textAlign: 'center',
-  },
-
-  // Nutrition (light card for contrast)
-  nutritionContainer: {
-    marginTop: 6,
-    marginBottom: 16,
-  },
-  nutritionCardLight: {
-    backgroundColor: theme.surfaceLight,
-    borderRadius: 14,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0', // slate-200 for light edge
-  },
-  caloriesValueLight: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: theme.warning,
-  },
-  caloriesLabelLight: {
-    fontSize: 12,
-    color: theme.textOnLight,
-    opacity: 0.7,
-    marginTop: 2,
-  },
-
-  macrosRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  macroCard: {
-    flex: 1,
-    backgroundColor: theme.surface,
-    borderRadius: 14,
-    padding: 14,
-    alignItems: 'center',
-    marginHorizontal: 5,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  macroValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.text,
-  },
-  macroLabel: {
-    fontSize: 12,
-    color: theme.textMuted,
-  },
-  macroLabelSmall: {
-    fontSize: 12,
- 
-    color: theme.textMuted,
-  },
-  macroLabelMedium: {
+  boldBlackText: {
+    color: '#FFFFFF',
     fontSize: 15,
-
-    color: theme.textMuted,
+    fontWeight: '600',
   },
-  macroLabelLarge: {
-    fontSize: 25,
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#A0A3A8',
+    marginBottom: 10,
+  },
 
-    color: theme.textMuted,
+  sectionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '90%',
+  },
+
+  trackerWrap: {
+    marginTop: 6,
   },
 
   // Buttons
-  quickActions: {
-    marginTop: 10,
-  },
-  actionButton: {
-    backgroundColor: theme.primary,
-    paddingVertical: 14,
-    borderRadius: 24,
+  button: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    justifyContent: 'center',
+    backgroundColor: '#2563EB',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginVertical: 6,
+  },
+  updateButton: {
+    backgroundColor: '#3B82F6',
   },
   actionButtonText: {
-    color: theme.text,
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  secondaryButton: {
-    backgroundColor: '#E2E8F0',   // light button for contrast
-    borderWidth: 0,
-  },
-  secondaryButtonText: {
-    color: theme.textOnLight,
-    fontSize: 16,
-    fontWeight: '700',
+  buttonIcon: {
+    marginRight: 6,
   },
 
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: theme.text,
-    marginBottom: 10,
+  // Loading center
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0E1116',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  
+  macrosContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    backgroundColor: '#0B1120', // deep dark blue/black
+    borderRadius: 16,
+    flex: 1,
+  },
+  
+  gradientCardOuter: {
+    width: '48%', // two per row
+    borderRadius: 16,
+    padding: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  
+  gradientCardInner: {
+    borderRadius: 14,
+    paddingVertical: 10, // smaller height
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    backgroundColor: '#1C1F26',
+    minHeight: 110, // adjust height of each card
+  },
+  
+  cardTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  
+  cardValue: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+    marginVertical: 4,
   },
 });
- 

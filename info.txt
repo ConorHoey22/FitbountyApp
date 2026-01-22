@@ -1,29 +1,72 @@
-🎨 Primary Colors
-Teal Background → #1CA7A0
-Bright Orange (buttons, accents) → #FF6B3D
-Yellow Progress Bar → #FFD54F
-Light Blue Progress Bar → #4FC3F7
-Purple Background (Rewards/Workout screen) → #3E2F66
-Dark Navy Background → #232946
-🎨 Secondary Colors
-Green Accent (heart/health) → #4CAF50
-Sky Blue (profile button) → #2196F3
-Red Accent (alerts/redeem) → #E53935
-White (text/cards) → #FFFFFF
-Light Grey Text → #CCCCCC
-🎨 Example Usage
-XP Bars: Use #FFD54F (yellow) and #4FC3F7 (blue).
-Cards: White background #FFFFFF with shadow.
-Rewards screen background: Purple #3E2F66.
-Profile CTA button: Blue #2196F3.
-General app background (dark mode): Navy #232946.
+
+Currently working on :  First time login - APP flow -  Adding Macros + Updating Macros 
+
+Issue atm : error on load - Variable is not a function : 
 
 
-Currently working on : Step plan added to , we need to get daily step goal , 
 
-Edit Plan aswell needs fixed - also stop placeholder from being 0 
+Update - (TODO)
+
+Update Plan and goals Button need mapped - needs tested
+
+Dashboard -> Weekly rewards  1/5 shouldnt be under goals ? 
+
+Water goal 
 
 
+------
+
+
+
+
+
+----
+----- APP FLOW
+
+Register
+Login 
+
+Set up page 
+
+What is your name - Validation Working  - 
+What is your Goal - Validation Working  - Currently a textBox But This needs to be defined - 
+but i think this needs to be Examples - Weightloss , Weightliftinh , improve mental health  , come more organside with my health
+
+What unit measurement would you like to use  - Next button needs to different colour i think than BLUE 
+enter weight needs to be numbers only + has the option to skip
+
+
+How many days per week do u workout  - enter weight needs to be numbers only + has the option to skip + cant enter Greater than 7 
+Steps  + Cardio Questions - Numbers only and can skip ( need to test SkIP )
+Finish button   - 
+
+UserPlan Creation 
+WeeklyPlan Creation 
+Setup complete - ( navigate to HomeScreen )
+
+Trigger UserHasMacros , if false or null -> Nav to macros assign screen
+
+
+HomeScreen _ Dashboard charts are updated / linked to DB 
+
+Todo 
+HomeScreen _ Dashboard charts are updated / linked to DB 
+ablity to update Program if they want 
+User can add Current progress to Macros / fitness goal amounts (Currentlyr test data)
+
+
+
+
+Plan Setup 
+
+Cardio text boxes are appearing as 0 and i cant enter BUG  , this
+needs to be a decimal 
+
+
+Macros - Possibly future - add automatic suggestions for weightloss etc 
+
+
+TrackerBar needs to be hooked up to DB data and 
 
 Add user data to My Profile and add it to grpahs etc
 
@@ -34,3 +77,30 @@ Weekly Check in - Same process maybe not what measurement they want to use but s
 
 Profile design
 
+
+
+Database fields needed to update 
+
+- cardioWeeklyGoal
+- stepsWeeklyGoal
+- workoutsWeeklyGoal 
+
+
+  //This data needs pulled from DB 
+
+  //Daily inputs 
+  const cardioProgress = 110
+  const stepsProgress =  1999
+  const workoutProgress = 1;
+
+
+  // Weekly progression amount - ( cardioPropress + cardioWeeklyProgress ) - This would need to be submiting every night at 12:00 
+
+// Weekly Goal 
+  const cardioWeeklyGoal = 210
+  const stepsWeeklyGoal =  56000
+  const workoutWeeklyGoal = 4;
+
+Progress should be entered and saved on local storage , i think ?? 
+
+Offline save on local storage 
