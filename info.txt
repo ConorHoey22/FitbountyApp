@@ -1,20 +1,78 @@
 
-Currently working on :  First time login - APP flow -  Adding Macros + Updating Macros 
+Currently working on : 
 
-Issue atm : error on load - Variable is not a function : 
-
-
-
-Update - (TODO)
-
-Update Plan and goals Button need mapped - needs tested
-
-Dashboard -> Weekly rewards  1/5 shouldnt be under goals ? 
-
-Water goal 
+Rest Timer  ; Monday 
 
 
-------
+BUG ATM -  Shouwing REST , When it shouldnt appear , we need the design / RestTimer to only appear when the user finishes the set 
+On Completion set , the tick is not turning Greedn
+
+IF the user clicks complete RestTimer is activated. 
+    RestTimer is then set to whatever value is stored in the Workout Array objec
+
+
+        Once the RestTimer hits 00:00 then Rest timer disappears + User receives Mobile Notifcation / alert 
+    Check Weight if weight is GREATER than PR (within workout object) then overwrite with new value 
+    Alert User of a new PR 
+
+CRUD Action  : Tuesday
+ - Add 
+ - Delete 
+  - Edit / Update/  Add a new Workout exercise  not in the array ? - where do we store it then
+
+CLOSE APP - Workout is saved  - LIke Kanhunas 
+Complete Workout Functionality: Wednesday 
+-We save PRs to DB or asyncstorage? 
+    - Modal appears 
+    -  Show PRs 
+    - Show Time 
+    - Show progress made to Today / Weekly Plan ( Future Animation )
+    - Show progress towards reward system ( Future Animation / filter )
+
+We save PRs to DB or asyncstorage? 
+
+
+Set Rest timer (Settings)  : Thursday 
+- Send Value to DB , have this beside UnitMeasurement?  - default to 2 mins 
+
+
+Reward System  : Friday 
+CRUD  - Create , read , update , delete a system 
+Daily Reward Systems 
+Weekly Reward Systems 
+Monthly Reward Systems 
+
+animations ( FUTURE )
+
+
+
+---
+** BUGS **
+
+Bug on HomeScreen  - Nutrition Plan  
+Steps to Replicate - enter amount , navigate to a different screen then return -> Values are reset to 0 (FAIL QA)
+
+----
+
+
+Smart watch intergation for tracking exercise / cardio + steps
+           <Text style={styles.subtitle}>* Update this modal throughout your day to keep track - Smart Watch integration coming soon *</Text>
+
+
+
+
+Update - (TODO) - Update Plan and goals Button need mapped - needs tested
+
+Next thing todo is update is reward system and personal goals tracker and backend of setting
+
+Water goal  ? 
+
+Habit tracker - mediadation , stretching , reading 
+
+
+---
+
+
 
 
 
@@ -45,62 +103,25 @@ WeeklyPlan Creation
 Setup complete - ( navigate to HomeScreen )
 
 Trigger UserHasMacros , if false or null -> Nav to macros assign screen
-
-
 HomeScreen _ Dashboard charts are updated / linked to DB 
-
-Todo 
-HomeScreen _ Dashboard charts are updated / linked to DB 
-ablity to update Program if they want 
-User can add Current progress to Macros / fitness goal amounts (Currentlyr test data)
+Can update Macros - Complete 
 
 
 
+PlanYourDay - Pulls data saved from the DB but then uses asyncstorage for currentprogress entered 
+Tests - does it reset at midnight with fresh progress bars? 
 
+
+------------------------------------------
 Plan Setup 
 
-Cardio text boxes are appearing as 0 and i cant enter BUG  , this
-needs to be a decimal 
-
-
-Macros - Possibly future - add automatic suggestions for weightloss etc 
-
-
-TrackerBar needs to be hooked up to DB data and 
-
 Add user data to My Profile and add it to grpahs etc
-
-Next step will be once the user Step 1 mode - Create a Daily Goal  , Weekly goal , Monthly goal -> screen moves to Plan out week -> then the user is brought to dashboard once they have the setup done
-
 
 Weekly Check in - Same process maybe not what measurement they want to use but same questions and make it mandatory as soon as they log in . 
 
 Profile design
 
 
-
 Database fields needed to update 
 
-- cardioWeeklyGoal
-- stepsWeeklyGoal
-- workoutsWeeklyGoal 
-
-
-  //This data needs pulled from DB 
-
-  //Daily inputs 
-  const cardioProgress = 110
-  const stepsProgress =  1999
-  const workoutProgress = 1;
-
-
-  // Weekly progression amount - ( cardioPropress + cardioWeeklyProgress ) - This would need to be submiting every night at 12:00 
-
-// Weekly Goal 
-  const cardioWeeklyGoal = 210
-  const stepsWeeklyGoal =  56000
-  const workoutWeeklyGoal = 4;
-
-Progress should be entered and saved on local storage , i think ?? 
-
-Offline save on local storage 
+Offline save on local storage  - Current progress vaues for PlanYourDay - are saved as Sync 

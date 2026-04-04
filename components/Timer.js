@@ -1,37 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import GradientBackground from '../lib/assets/Card';
-
 
 const Timer = () => {
   const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
+  const intervalRef = useRef(null);
 
-  // Effect to handle timer updates
   useEffect(() => {
-    let interval = null;
-
     if (isActive) {
-      interval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setSeconds((prev) => prev + 1);
       }, 1000);
-    } else if (!isActive && seconds !== 0) {
-      clearInterval(interval);
+    } else if (!isActive && intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
 
-    return () => clearInterval(interval);
+    return () => clearInterval(intervalRef.current);
   }, [isActive]);
 
-  const toggleTimer = () => {
-    setIsActive(!isActive);
-  };
+  const toggleTimer = () => setIsActive(!isActive);
 
   const resetTimer = () => {
     setSeconds(0);
     setIsActive(false);
+    clearInterval(intervalRef.current);
+    intervalRef.current = null;
   };
 
-  // Helper to format time as MM:SS
   const formatTime = (time) => {
     const mins = Math.floor(time / 60);
     const secs = time % 60;
@@ -39,24 +36,21 @@ const Timer = () => {
   };
 
   return (
-    <View style={styles.container}>
-              <GradientBackground colors={['#0A0F47', '#1E3A8A', '#2563EB']}>
-
-      
-
-      <View style={styles.setRow}>
+    <View style={styles.timerWrapper}>
+    
         <Text style={styles.timeText}>{formatTime(seconds)}</Text>
-      </View>
-      </GradientBackground>
+
+
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: isActive ? '#EF4444' : '#22C55E' }]}
           onPress={toggleTimer}
+          activeOpacity={0.8}
         >
           <Text style={styles.buttonText}>{isActive ? 'Pause' : 'Start'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.button, styles.resetButton]} onPress={resetTimer}>
+        <TouchableOpacity style={[styles.button, styles.resetButton]} onPress={resetTimer} activeOpacity={0.8}>
           <Text style={styles.buttonText}>Reset</Text>
         </TouchableOpacity>
       </View>
@@ -67,40 +61,30 @@ const Timer = () => {
 export default Timer;
 
 const styles = StyleSheet.create({
-  container: {
-
+  timerWrapper: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 10,
+  },
+  gradientBox: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignSelf: 'center',
   },
   timeText: {
-
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-
-
-  },
-  setRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   buttonContainer: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
+    marginTop: 10,
   },
   button: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 8,
   },
   resetButton: {
     backgroundColor: '#3B82F6',

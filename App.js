@@ -1,16 +1,18 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, StatusBar } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppLayout from './components/AppLayout';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
-import HomeScreen from './screens/HomeScreen';
+import Home from './screens/Home';
 import WorkoutsScreen from './screens/WorkoutsScreen';
 import WorkoutModeScreen from './screens/WorkoutModeScreen';
 import ProfileScreen from './screens/ProfileScreen';
@@ -20,10 +22,24 @@ import CreateUserPlan from './screens/CreateUserPlan';
 import WeightTrackerScreen from './screens/WeightTrackerScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import RewardSystemScreen from './screens/RewardSystemScreen';
-import AddMacros from './screens/AddMacros';
+
 
 
 import { supabase } from './lib/supabase';
+import UpdateMacrosPlan from './screens/UpdateMacrosPlan';
+
+
+const MyDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: '#0E1116',
+    card: '#121826',
+    border: '#1F2937',
+    text: '#FFFFFF',
+    primary: '#4CAF50',
+  },
+};
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -39,7 +55,7 @@ function withLayout(Component, title) {
 function AuthStack() {
   return (
     <Stack.Navigator initialRouteName="Login">
-      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );
@@ -59,30 +75,32 @@ function AppTabs() {
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#4CAF50',
-        tabBarInactiveTintColor: 'gray',
+        tabBarInactiveTintColor: '#9CA3AF',
+
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: '#121826',
           borderTopWidth: 1,
-          borderTopColor: '#e0e0e0',
-          height: 70,
-          paddingBottom: 6,
-          paddingTop: 6,
+          borderTopColor: '#1F2937',
+
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: '600',
-          marginBottom: 10,
+
         },
-        headerStyle: { backgroundColor: '#fff' },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold', color:'#000' },
+        headerStyle: { backgroundColor: '#121826' },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: { fontWeight: 'bold', color:'#FFFFFF' },
+        
       })}
     >
-      <Tab.Screen name="Home" component={withLayout(HomeScreen, 'Home')} options={{ headerShown: false }} />
-      <Tab.Screen name="ProfileScreen" component={withLayout(ProfileScreen, 'ProfileScreen')} options={{ headerShown: false }} />
+      <Tab.Screen name="Home" component={withLayout(Home, 'Home')} options={{ headerShown: false }} />
+      <Tab.Screen name="ProfileScreen" component={withLayout(ProfileScreen, 'ProfileScreen')} options={{ headerShown: false , tabBarLabel: 'Profile' }} />
       <Tab.Screen name="Workouts" component={withLayout(WorkoutsScreen, 'Workouts')} options={{ headerShown: false }} />
-      <Tab.Screen name="PlanYourWeekScreen" component={withLayout(PlanYourWeekScreen, 'PlanYourWeekScreen')} options={{ headerShown: false }} />
-      <Tab.Screen name="SettingsScreen" component={withLayout(SettingsScreen, 'SettingsScreen')} options={{ headerShown: false }} />
+      <Tab.Screen name="PlanYourWeekScreen" component={withLayout(PlanYourWeekScreen, 'PlanYourWeekScreen')} options={{ headerShown: false , tabBarLabel: 'Planner'}} />
+      <Tab.Screen name="SettingsScreen" component={withLayout(SettingsScreen, 'SettingsScreen')} options={{ headerShown: false ,tabBarLabel: 'Settings' }}/>
+      <Tab.Screen name="UpdateMacrosPlan" component={withLayout(UpdateMacrosPlan, 'UpdateMacrosPlan')} options={{ headerShown: false ,tabBarButton: () => null }} />
+      <Tab.Screen name="WorkoutModeScreen" component={withLayout(WorkoutModeScreen,'WorkoutModeScreen')} options={{ headerShown:false, tabBarButton: () => null }} />
     </Tab.Navigator>
   );
 }
@@ -92,11 +110,20 @@ function AppStack() {
     <Stack.Navigator>
       <Stack.Screen name="AppTabs" component={AppTabs} options={{ headerShown: false }} />
       <Stack.Screen name="CreateUserPlan" component={withLayout(CreateUserPlan, 'CreateUserPlan')} options={{ title: 'Start your Journey' }} />
-      <Stack.Screen name="CreateMyPlan" component={withLayout(CreateMyPlan,'CreateMyPlan')} options={{ title: 'Create a Plan' }} />
-      <Stack.Screen name="AddMacros" component={withLayout(AddMacros,'AddMacros')} options={{ title: 'Add Macros' }} />
+      <Stack.Screen name="CreateMyPlan" component={withLayout(CreateMyPlan,'CreateMyPlan') }options={{ headerShown: false }} />
+      <Stack.Screen
+          name="UpdateMacrosPlan"
+          component={UpdateMacrosPlan}
+          options={{ headerShown: false }} 
+        />
+          {/* <Stack.Screen
+          name="WorkoutModeScreen"
+          component={WorkoutModeScreen}
+          options={{ headerShown: false }} 
+        /> */}
       <Stack.Screen name="PlanYourWeekScreen" component={withLayout(PlanYourWeekScreen,'PlanYourWeekScreen')} options={{ title: 'Create a Plan' }} />
       <Stack.Screen name="WeightTrackerScreen" component={withLayout(WeightTrackerScreen,'WeightTrackerScreen')} options={{ title: 'Track your Weight' }} />
-      <Stack.Screen name="WorkoutModeScreen" component={withLayout(WorkoutModeScreen,'WorkoutModeScreen')} options={{ title: 'Workout' }} />
+
       <Stack.Screen name="RewardSystemScreen" component={withLayout(RewardSystemScreen,'RewardSystemScreen')} options={{ title: 'Your Reward System'}} />
     </Stack.Navigator>
   );
@@ -135,10 +162,17 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#0E1116" />
-      <NavigationContainer>
-        {hasSession ? <AppStack /> : <AuthStack />}
-      </NavigationContainer>
+
+      <StatusBar
+          translucent
+          backgroundColor="transparent"
+          barStyle="light-content"
+        />
+
+        <NavigationContainer theme={MyDarkTheme}>
+          {hasSession ? <AppStack /> : <AuthStack />}
+        </NavigationContainer>
+        
     </SafeAreaProvider>
   );
 }

@@ -1,89 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 
-const RestTimer = () => {
-  const [seconds, setSeconds] = useState(0);
-  const [isActive, setIsActive] = useState(false);
+const RestTimer = forwardRef(({
+  onTimerComplete,
+}, ref) => {
 
-  // Effect to handle timer updates
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [duration, setDuration] = useState(180);
+  const intervalRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    start: (customDuration) => {
+      const d = customDuration || 180;
+      setDuration(d);
+      setSecondsLeft(d);
+      setIsRunning(true);
+    },
+    stop: () => {
+      setIsRunning(false);
+      clearInterval(intervalRef.current);
+    },
+  }));
+
   useEffect(() => {
-    let interval = null;
-
-    if (isActive) {
-      interval = setInterval(() => {
-        setSeconds((prev) => prev + 1);
+    if (isRunning) {
+      intervalRef.current = setInterval(() => {
+        setSecondsLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(intervalRef.current);
+            setIsRunning(false);
+            onTimerComplete?.();
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
-    } else if (!isActive && seconds !== 0) {
-      clearInterval(interval);
     }
+    return () => clearInterval(intervalRef.current);
+  }, [isRunning]);
 
-    return () => clearInterval(interval);
-  }, [isActive]);
-
-  const toggleTimer = () => {
-    setIsActive(!isActive);
-  };
-
-  const resetTimer = () => {
-    setSeconds(0);
-    setIsActive(false);
-  };
-
-  // Helper to format time as MM:SS
-  const formatTime = (time) => {
-    const mins = Math.floor(time / 60);
-    const secs = time % 60;
-    return `${mins < 10 ? '0' + mins : mins}:${secs < 10 ? '0' + secs : secs}`;
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.timeText}>{formatTime(seconds)}</Text>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: isActive ? '#EF4444' : '#22C55E' }]}
-          onPress={toggleTimer}
-        >
-          <Text style={styles.buttonText}>{isActive ? 'Pause' : 'Start'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.button, styles.resetButton]} onPress={resetTimer}>
-          <Text style={styles.buttonText}>Reset</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={{ backgroundColor: 'rgba(16,185,129,0.1)', padding: 10, borderRadius: 12 }}>
+      <Text style={{ color: '#10b981', fontSize: 22, fontWeight: 'bold' }}>  
+        {isRunning ?  formatTime(secondsLeft) : ''}
+      </Text>
+      <TouchableOpacity onPress={() => restTimerRef.current?.start(180)}>
+ 
+      </TouchableOpacity>
     </View>
   );
-};
+});
 
 export default RestTimer;
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  timeText: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 15,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  button: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-  },
-  resetButton: {
-    backgroundColor: '#3B82F6',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-});

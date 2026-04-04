@@ -10,8 +10,10 @@ export default function RegisterScreen({ navigation }) {
   
 
 
-
-
+// Register Screen 
+   // Email Input
+   // Password input box
+   // Confirm Password  box
   
   const handleRegister = async () => {
     if (password !== confirmPassword) {

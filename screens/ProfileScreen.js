@@ -1,18 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  Dimensions, 
+  TouchableOpacity,
+  StatusBar 
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import XPTrophyCount from '../components/XPTrophyCount';
-import ContainerCard from '../components/ContainerCard';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function ProfileScreen() {
-
-
-
   const navigation = useNavigation();
 
   const [weeklyData, setWeeklyData] = useState([]);
@@ -40,183 +45,402 @@ export default function ProfileScreen() {
   }, []);
 
   return (
-    <ScrollView style={styles.container}>
-   
-      {/* Profile Header */}
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Natural Gradient Background */}
+      <LinearGradient
+        colors={['#1e3a8a', '#0f766e', '#065f46']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBackground}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          
+          {/* Profile Header */}
+          <View style={styles.headerRow}>
+            {/* Left column: Avatar + Greeting */}
+            <View style={styles.leftColumn}>
+              <LinearGradient
+                colors={['#f59e0b', '#d97706']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.circle}
+              >
+                <Ionicons name="person" size={32} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={styles.greeting}>Hi {username}!</Text>
+                <Text style={styles.subGreeting}>Level 3 • 350 XP</Text>
+              </View>
+            </View>
 
-      <View style={styles.headerRow}>
-      {/* Left column: Avatar + Greeting */}
-      <View style={styles.leftColumn}>
-        <View style={styles.circle}>
-          <Ionicons name="person" size={30} color="#fff" />
-        </View>
-        <Text style={styles.greeting}>Hi {username}!</Text>
-      </View>
+            {/* Right column: XP */}
+            <View style={styles.rightColumn}>
+              <XPTrophyCount />
+            </View>
+          </View>
 
-      {/* Right column: XP */}
-      <View style={styles.rightColumn}>
-        <XPTrophyCount />
-      </View>
-    </View>
+          {/* Quick Actions Card */}
+          <LinearGradient
+            colors={['#1E293B', '#1E293B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardOuter}
+          >
+            <LinearGradient
+              colors={['#0F172A', '#0F172A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardInner}
+            >
+              <Text style={styles.cardTitle}>Quick Actions</Text>
+              
+              <View style={styles.quickActions}>
+                <TouchableOpacity style={styles.actionCard}>
+                  <LinearGradient
+                    colors={['#10b981', '#059669']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.actionGradient}
+                  >
+                    <Ionicons name="walk" size={28} color="#fff" />
+                    <Text style={styles.actionText}>Update Steps</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.actionCard}
+                  onPress={() => navigation.navigate('WeightTrackerScreen')}
+                >
+                  <LinearGradient
+                    colors={['#3b82f6', '#2563eb']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.actionGradient}
+                  >
+                    <Ionicons name="fitness" size={28} color="#fff" />
+                    <Text style={styles.actionText}>Track Weight</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </LinearGradient>
+
+                {/* Stats Summary */}
+                <LinearGradient
+            colors={['#1E293B', '#1E293B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardOuter}
+          >
+            <LinearGradient
+              colors={['#0F172A', '#0F172A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardInner}
+            >
+              <Text style={styles.cardTitle}>This Week's Summary</Text>
+              
+              <View style={styles.statsGrid}>
+                <View style={styles.statItem}>
+                  <Ionicons name="footsteps-outline" size={24} color="#10b981" />
+                  <Text style={styles.statValue}>59,200</Text>
+                  <Text style={styles.statLabel}>Total Steps</Text>
+                </View>
+
+                <View style={styles.statItem}>
+                  <Ionicons name="flame-outline" size={24} color="#f59e0b" />
+                  <Text style={styles.statValue}>3</Text>
+                  <Text style={styles.statLabel}>Workouts Complete</Text>
+                </View>
+
+                <View style={styles.statItem}>
+                  <Ionicons name="trophy-outline" size={24} color="#14b8a6" />
+                  <Text style={styles.statValue}>5/7</Text>
+                  <Text style={styles.statLabel}>Goals Hit</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </LinearGradient>
+
+          {/* Weekly Steps Chart */}
+          <View style={styles.chartSection}>
+            <View style={styles.chartHeader}>
+              <Ionicons name="bar-chart-outline" size={24} color="#10b981" />
+              <Text style={styles.sectionTitle}>Steps This Week</Text>
+            </View>
+            
+            {weeklyData.length > 0 && (
+              <LinearGradient
+                colors={['#1E293B', '#1E293B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.chartCardOuter}
+              >
+                <LinearGradient
+                  colors={['#0F172A', '#0F172A']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.chartCardInner}
+                >
+                  <BarChart
+                    data={{
+                      labels: weeklyData.map(d =>
+                        new Date(d.date).toLocaleDateString('en-GB', { weekday: 'short' })
+                      ),
+                      datasets: [{ data: weeklyData.map(d => d.steps) }],
+                    }}
+                    width={screenWidth - 80}
+                    height={220}
+                    chartConfig={chartConfig}
+                    style={styles.chart}
+                  />
+                </LinearGradient>
+              </LinearGradient>
+            )}
+          </View>
+
+          {/* Monthly Steps Chart */}
+          <View style={styles.chartSection}>
+            <View style={styles.chartHeader}>
+              <Ionicons name="trending-up-outline" size={24} color="#14b8a6" />
+              <Text style={styles.sectionTitle}>Monthly Steps</Text>
+            </View>
+            
+            {monthlyData.length > 0 && (
+              <LinearGradient
+                colors={['#1E293B', '#1E293B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.chartCardOuter}
+              >
+                <LinearGradient
+                  colors={['#0F172A', '#0F172A']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.chartCardInner}
+                >
+                  <LineChart
+                    data={{
+                      labels: monthlyData.map(m =>
+                        new Date(m.month_start).toLocaleDateString('en-GB', { month: 'short' })
+                      ),
+                      datasets: [{ data: monthlyData.map(m => m.total_steps) }],
+                    }}
+                    width={screenWidth - 80}
+                    height={220}
+                    chartConfig={monthlyChartConfig}
+                    style={styles.chart}
+                    bezier
+                  />
+                </LinearGradient>
+              </LinearGradient>
+            )}
+          </View>
+
     
 
-      
-
-  
-
-  <ContainerCard>
-    <View style={styles.quickActions}>
-     <TouchableOpacity style={styles.actionCard}>
-      <Ionicons name="walk" size={24} color="#4CAF50" />
-      <Text style={styles.actionText}>Update Steps</Text>
-      </TouchableOpacity>
-
-    <TouchableOpacity 
-      style={styles.actionCard} 
-      onPress={() => navigation.navigate('WeightTrackerScreen')}
-    >
-      <Ionicons name="fitness" size={24} color="#4CAF50" />
-      <Text style={styles.actionText}>Track Weight</Text>
-    </TouchableOpacity>
-  </View>
-</ContainerCard>
-
-      {/* Weekly Steps Chart */}
-      <Text style={styles.sectionTitle}>Steps This Week</Text>
-      {weeklyData.length > 0 && (
-        <BarChart
-          data={{
-            labels: weeklyData.map(d =>
-              new Date(d.date).toLocaleDateString('en-GB', { weekday: 'short' })
-            ),
-            datasets: [{ data: weeklyData.map(d => d.steps) }],
-          }}
-          width={screenWidth - 30}
-          height={220}
-          chartConfig={chartConfig}
-          style={styles.chart}
-        />
-      )}
-
-      {/* Monthly Steps Chart */}
-      <Text style={styles.sectionTitle}>Monthly Steps</Text>
-      {monthlyData.length > 0 && (
-        <LineChart
-          data={{
-            labels: monthlyData.map(m =>
-              new Date(m.month_start).toLocaleDateString('en-GB', { month: 'short' })
-            ),
-            datasets: [{ data: monthlyData.map(m => m.total_steps) }],
-          }}
-          width={screenWidth - 30}
-          height={220}
-          chartConfig={chartConfig}
-          style={styles.chart}
-        />
-      )}
-    </ScrollView>
+        </ScrollView>
+      </LinearGradient>
+    </View>
   );
 }
 
 const chartConfig = {
-  backgroundColor: '#fff',
-  backgroundGradientFrom: '#fff',
-  backgroundGradientTo: '#fff',
+  backgroundColor: 'transparent',
+  backgroundGradientFrom: '#0F172A',
+  backgroundGradientTo: '#0F172A',
   decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`, // green theme
-  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+  color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+  propsForDots: {
+    r: '4',
+    strokeWidth: '2',
+    stroke: '#10b981',
+  },
+  propsForBackgroundLines: {
+    strokeWidth: 1,
+    stroke: '#1E293B',
+    strokeDasharray: '0',
+  },
+};
+
+const monthlyChartConfig = {
+  backgroundColor: 'transparent',
+  backgroundGradientFrom: '#0F172A',
+  backgroundGradientTo: '#0F172A',
+  decimalPlaces: 0,
+  color: (opacity = 1) => `rgba(20, 184, 166, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
   propsForDots: {
     r: '5',
     strokeWidth: '2',
-    stroke: '#4CAF50',
+    stroke: '#14b8a6',
+  },
+  propsForBackgroundLines: {
+    strokeWidth: 1,
+    stroke: '#1E293B',
+    strokeDasharray: '0',
   },
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 15,
-    paddingTop:65,
-    backgroundColor: '#f8f9fa',
   },
-  
+  gradientBackground: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingTop: 65,
+    paddingBottom: 40,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   leftColumn: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   rightColumn: {
     justifyContent: 'center',
     alignItems: 'flex-end',
   },
   circle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#2196F3',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   greeting: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
-  
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 20,
-    marginBottom: 10,
-    color: '#333',
+  subGreeting: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 2,
   },
-  chart: {
-    borderRadius: 12,
-    marginVertical: 8,
+  cardOuter: {
+    borderRadius: 20,
+    padding: 2,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  button: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    alignSelf: 'center',
-    marginTop: 10,
+  cardInner: {
+    borderRadius: 18,
+    padding: 20,
+    backgroundColor: '#0F172A',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 16,
   },
   quickActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginVertical: 10,
+    gap: 12,
   },
   actionCard: {
     flex: 1,
-    backgroundColor: '#f0fdf4', // light green background
+  },
+  actionGradient: {
     paddingVertical: 20,
-    marginHorizontal: 5,
     borderRadius: 12,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   actionText: {
     marginTop: 8,
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#FFFFFF',
   },
-  
-  
+  chartSection: {
+    marginBottom: 20,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  chartCardOuter: {
+    borderRadius: 16,
+    padding: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  chartCardInner: {
+    borderRadius: 14,
+    padding: 16,
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+  },
+  chart: {
+    borderRadius: 12,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 12,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#1C1F26',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#A0A3A8',
+    marginTop: 4,
+    textAlign: 'center',
+  },
 });
