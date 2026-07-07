@@ -1,0 +1,27 @@
+workout_name,exercise_name,sets,reps,rest_timer
+Upper 1,Bench Press,4,6-8,180
+Upper 1,Bent Over Row,4,8-10,150
+Upper 1,Overhead Press,3,8-10,150
+Upper 1,Lat Pulldown,3,10-12,120
+Upper 1,Lateral Raises,3,12-15,90
+Upper 1,Tricep Pushdown,3,10-12,90
+Upper 1,Bicep Curl,3,10-12,90
+Lower 1,Squat,4,6-8,180
+Lower 1,Leg Press,3,8-12,150
+Lower 1,Romanian Deadlift,3,8-10,150
+Lower 1,Leg Extension,3,12-15,120
+Lower 1,Hamstring Curl,3,10-12,120
+Lower 1,Calf Raises,4,12-15,90
+Upper 2,Incline Dumbbell Press,4,8-10,150
+Upper 2,Pull Ups,4,6-10,150
+Upper 2,Seated Dumbbell Shoulder Press,3,8-10,150
+Upper 2,Cable Row,3,10-12,120
+Upper 2,Face Pulls,3,12-15,90
+Upper 2,Skull Crushers,3,10-12,90
+Upper 2,Hammer Curl,3,10-12,90
+Lower 2,Deadlift,4,4-6,180
+Lower 2,Bulgarian Split Squat,3,8-10,150
+Lower 2,Hip Thrust,3,8-12,150
+Lower 2,Leg Curl,3,10-12,120
+Lower 2,Leg Extension,3,12-15,120
+Lower 2,Calf Raises,4,12-15,90

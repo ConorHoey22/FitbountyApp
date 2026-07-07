@@ -1,23 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   StatusBar,
   ScrollView,
-  Image,
-  Dimensions
+  Dimensions,
+  Image
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
+import { getISOWeekKey } from '../utils/weeklyKeyCreate';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { getProfile } from '../lib/GetProfile';
 import { Ionicons } from '@expo/vector-icons';
+
+// In Home.js — add a refresh state
 
 const { width } = Dimensions.get('window');
 
@@ -27,8 +31,9 @@ import TodayPlanCard from '../components/TodayPlanCard';
 import Card from '../lib/assets/Card';
 import Divider from '../components/Divider';
 import AddMacrosModal from '../components/AddMacrosModal';
+import AddComingSoonModal from '../components/AddComingSoonModal';
 import AddTodayPlanModal from '../components/AddTodayPlanModal';
-
+import XPRewardSuccessModal from '../components/XPRewardSuccessModal';
 
 export default function Home() {
   const navigation = useNavigation();
@@ -39,127 +44,204 @@ export default function Home() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
+  const [profile, setProfile] = useState(null);
 
+  // Macros Goals
+  const [caloriesGoal, SetCaloriesGoal] = useState();
+  const [proteinGoal, SetProteinGoal] = useState();
+  const [carbohydratesGoal, SetCarbohydratesGoal] = useState();
+  const [fatsGoal, SetFatsGoal] = useState();
 
-    const [profile, setProfile] = useState(null);
-
-
-
-  //Macros Goals  - Pulled from Database 
-  const [caloriesGoal , SetCaloriesGoal]  = useState();
-  const [proteinGoal , SetProteinGoal]  = useState();
-  const [carbohydratesGoal , SetCarbohydratesGoal]  = useState();
-  const [fatsGoal , SetFatsGoal]  = useState();
-
-
-  // Total Consusumed amounts  - Manually enter or fitnesspal in future
+  // Consumed amounts
   const [caloriesConsumed, SetCaloriesConsumed] = useState(0);
   const [proteinConsumed, SetProteinConsumed] = useState(0);
   const [carbohydratesConsumed, SetCarbohydratesConsumed] = useState(0);
   const [fatsConsumed, SetFatsConsumed] = useState(0);
 
+  // Fitness Goals
+  const [cardioGoal, SetCardioGoal] = useState();
+  const [stepsGoal, SetStepsGoal] = useState();
+  const [workoutSessionsGoal, SetWorkoutSesssionsGoal] = useState();
 
-  //Fitness Weekly Goals 
-  const [cardioGoal , SetCardioGoal] = useState();
-  const [stepsGoal , SetStepsGoal] = useState();
-  const [workoutSessionsGoal , SetWorkoutSesssionsGoal] = useState();
+  // Weekly Fitness Goal
+  const [weeklyWorkoutCount, setWeeklyWorkoutCount] = useState(0);
+  const [weeklyCardioCount, setWeeklyCardioCount] = useState(0);
 
-  //Modal - AddMacros
+  const [dailystepCount, setDailyStepCount] = useState(0);
 
+
+  //Reward System Checks 
+  const [isCardioRewarded, setIsCardioRewarded] = useState();
+  const [isWorkoutRewarded, setIsWorkoutRewarded] = useState();
+  const [isDailyStepsRewarded, setIsDailyStepsRewarded] = useState();
+
+  // Reward System - Success Modal 
+  const [rewardNotficationModalVisible, setRewardNotificationModalVisible] = useState(false);
+  const [rewardNotficationType, SetRewardNotficationType] = useState(false);
+
+  // Modal
   const [macrosModalVisible, setMacrosModalVisible] = useState(false);
+  const [comingSoonModalVisible, setComingSoonModalVisible] = useState(false);
 
 
+  const images = [require('../lib/assets/FBLogo.png')];
 
+const [refreshKey, setRefreshKey] = useState(0);
 
- 
-
-  const images = [
-    require('../lib/assets/maleRunning.png')
-  ];
 
   useEffect(() => {
     const load = async () => {
+      try {
+        setLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
 
-    try {
-      setLoading(true);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.user) {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-        return;
-      }
-
-      const profileData = await getProfile(session.user.id);
-
-
-      // No profile row found — first login
-      if (!profileData) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'CreateUserPlan' }],
-        });
-        return;
-      }
-
-      // Profile DB Trigger check 
-      if (!profileData.UserHasEnteredTheirProfileDataTrigger) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'CreateUserPlan' }],
-        });
-        return;
-      }
-
-      // Weekly Plan DB Trigger check 
-      if (!profileData.UserHasWeeklyPlanSetup) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'PlanYourWeekScreen' }],
-        });
-        return;
-      }
-
-
-      // If User has Profiledata & Weekly plan setup but not Macros  
-      if(profileData.UserHasEnteredTheirProfileDataTrigger && profileData.UserHasEnteredTheirProfileDataTrigger && !profileData.UserHasMacros)
-      {
-          console.log("User does not have macros");
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'AddMacros' }],
-          });
+        if (!session?.user) {
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           return;
+        }
 
+        const profileData = await getProfile(session.user.id);
+
+        if (!profileData) {
+          navigation.reset({ index: 0, routes: [{ name: 'CreateUserPlan' }] });
+          return;
+        }
+        if (!profileData.UserHasEnteredTheirProfileDataTrigger) {
+          navigation.reset({ index: 0, routes: [{ name: 'CreateUserPlan' }] });
+          return;
+        }
+        if (!profileData.UserHasWeeklyPlanSetup) {
+          navigation.reset({ index: 0, routes: [{ name: 'PlanYourWeekScreen' }] });
+          return;
+        }
+        if (profileData.UserHasEnteredTheirProfileDataTrigger && !profileData.UserHasMacros) {
+          console.log('User does not have macros');
+          navigation.reset({ index: 0, routes: [{ name: 'AddMacros' }] });
+          return;
+        }
+
+        setProfile(profileData);
+        SetCaloriesGoal(profileData.calories);
+        SetProteinGoal(profileData.protein);
+        SetCarbohydratesGoal(profileData.carbohydrates);
+        SetFatsGoal(profileData.fats);
+        SetCardioGoal(profileData.cardioGoal);
+        SetStepsGoal(profileData.stepGoal);
+        SetWorkoutSesssionsGoal(profileData.workoutSessionsGoal);
+
+        checkWeeklySetupTrigger();
+
+      } catch (err) {
+        console.error('Home Screen load error:', err.message);
+      } finally {
+        setLoading(false);
       }
+    };
+    load();
+  }, []);
 
-      //Get Profile
-      setProfile(profileData);
-      
-      //Macros
-      SetCaloriesGoal(profileData.calories);
-      SetProteinGoal(profileData.protein);
-      SetCarbohydratesGoal(profileData.carbohydrates);
-      SetFatsGoal(profileData.fats);
+  const triggerReward  = async () => { 
+    try
+    {   
+   
+        // Modal ( Cardio )
+        const [rewardNotficationModalVisible, setRewardNotificationModalVisible] = useState(true,rewardNotficationType);
 
-      //Fitness Goals
-      SetCardioGoal(profileData.cardioGoal);
-      SetStepsGoal(profileData.stepGoal);
-      SetWorkoutSesssionsGoal(profileData.workoutSessionsGoal);
-      
+    }
+    catch (err) {
+      console.error('Trigger Reward error:', err.message);
+    }
 
+  }; 
+
+  const syncWeeklyStats = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const { data: profile, error } = await supabase
+        .from('userProfiles')
+        .select('weeklyFitBKey, weeklyWorkoutCount , weeklyCardioCount')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error || !profile) return;
+
+      const currentWeekKey = getISOWeekKey(new Date());
+
+      if (profile.weeklyFitBKey === currentWeekKey) {
+        // Same week — just display the count
+        setWeeklyWorkoutCount(profile.weeklyWorkoutCount);
+        setWeeklyCardioCount(profile.weeklyCardioCount);
+
+
+        // Check if user has reached Goal Trackers , if so XP added to user Account 
+        // -- Need to consider that they can only get rewarded once so if they get 180 mins of cardio in 2 days and then log back in again it should not add more XP Rewards 
+
+
+        // Check Cardio Goal
+        if (weeklyCardioCount >= cardioGoal && !isCardioRewarded) 
+        {
+                // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
+                triggerReward('CARDIO');
+                setIsCardioRewarded(true); // Locks the reward out
+
+          // TODO: Make an API/DB call here to save `isCardioRewarded: true` and add XP to user profile
+          await supabase
+          .from('userProfiles')
+              .update({isCardioRewarded : true})
+              .eq('id', session.user.id);
+
+
+           // Async Value as well just incase the user is OFFLINE
+        }
+
+        // Check Workout Goal
+        if (weeklyWorkoutCount >= workoutSessionsGoal && !isWorkoutRewarded) 
+        {
+                // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
+                triggerReward('WORKOUT');
+                setIsWorkoutRewarded(true); // Locks the reward out
+          // TODO: Make an API/DB call here to save `isWorkoutRewarded: true` and add XP to user profile
+        }
+
+        // Check Workout Goal
+        if (dailystepCount >= stepsGoal && !isDailyStepsRewarded) 
+        {
+            // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
+            triggerReward('DAILYSTEPS');
+            setIsDailyStepsRewarded(true); // Locks the reward out
+        // TODO: Make an API/DB call here to save `isWorkoutRewarded: true` and add XP to user profile
+        }
+
+
+      } else {
+        // New week — reset to 0
+        await supabase
+          .from('userProfiles')
+          .update({ weeklyCardioCount: 0,weeklyWorkoutCount: 0, weeklyFitBKey: currentWeekKey })
+          .eq('id', session.user.id);
+        setWeeklyWorkoutCount(0);
+        setWeeklyCardioCount(0);
+      }
     } catch (err) {
-      console.error('Home Screen load error:', err.message);
-    } finally {
-      setLoading(false);
+      console.error('Weekly sync error:', err.message);
     }
   };
 
+    
+  // ── Weekly workout sync — runs every time screen is focused ──
+  useFocusEffect(
+    useCallback(() => {
+     
+      syncWeeklyStats();
+    }, [])
+  );
+
+
   
-    load();
-  }, []);
+
+
 
   const checkWeeklySetupTrigger = async () => {
     try {
@@ -168,19 +250,16 @@ export default function Home() {
         navigation.reset({ index: 0, routes: [{ name: 'PlanYourWeekScreen' }] });
         return;
       }
-      console.log('Weekly Plan already set:', profileData);
+
     } catch (err) {
       console.error('Weekly setup check error:', err.message);
     }
   };
 
-
-
-  
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={ACCENT} />
       </View>
     );
   }
@@ -188,552 +267,603 @@ export default function Home() {
   if (!profile) {
     return (
       <View style={styles.center}>
-        <Text>No profile found</Text>
+        <Text style={styles.emptyText}>No profile found</Text>
       </View>
     );
   }
+
   return (
     <View style={styles.container}>
-    <StatusBar barStyle="light-content" /> 
-    
-    {/* Natural Gradient Background - Deep Blue/Teal */}
-    <LinearGradient
-      colors={['#1e3a8a', '#0f766e', '#065f46']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientBackground}
-    >
+      <StatusBar barStyle="light-content" />
 
-        <KeyboardAvoidingView 
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      {/* Background blobs */}
+      <View style={styles.blobTopRight} />
+      <View style={styles.blobBottomLeft} />
+
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.content}>
-              {/* Header with Natural Icon */}
-              <View style={styles.header}>
-             
-                    
-              <Text style={styles.title}>Welcome to Fit-Bounty, {profile.first_name || 'Friend'}</Text> 
-              <Text style={styles.subtitle}>Your fitness journey starts here</Text>
-            
-                <XPBar currentXP={350} levelXP={500} level={3} />
+          <View style={styles.content}>
+
+            {/* ── Header ── */}
+            <View style={styles.header}>
+              <View style={styles.sideContainer}>
+                <TouchableOpacity style={styles.profileImageContainer}>
+                  <Ionicons name="person" size={30} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.headerCenter}>
+              <Image
+              source={require('../lib/assets/FBLogo.png')}
+              style={styles.image}
+            />
 
 
               </View>
 
-              <TodayPlanCard profile={profile} />
-
-{/* Macros Row 1  */}
-
-    <View style={styles.cardContainer}>      
-          <View style={styles.cardHeader}>
-          <Text style={styles.actionText}> Nutrition Plan </Text>  
-    </View>
+              <View style={styles.sideContainer}>
+                <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen')} >
+                  <Ionicons name="settings-outline" size={26} color={ACCENT} />
+                </TouchableOpacity>
+              </View>
+            </View>
 
 
+            <View style={styles.XPheader}>
+              <XPBar currentXP={350} levelXP={500} level={3} /> 
+            </View>
 
+            <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setComingSoonModalVisible(true)}
+                  >
+                    <Ionicons name="add-outline" size={18} color="#0E0E12" />
+                    <Text style={styles.actionText}>FIND A COACH</Text>
+                  </TouchableOpacity>
+
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setComingSoonModalVisible(true)}
+                  >
+                    <Ionicons name="heart" size={18} color="#0E0E12" />
+                    <Text style={styles.actionText}>MY HEALTH</Text>
+                  </TouchableOpacity>
+            </View>
+
+            <XPRewardSuccessModal
+              profile={profile}
+             />
+           
+
+            {/* ── Nutrition Card ── */}
+            <View style={styles.cardContainer}>
+
+              {/* Card header */}
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderLeft}>
+                  <Ionicons name="nutrition-outline" size={16} color={ACCENT} />
+                  <Text style={styles.cardHeaderText}>Nutrition Plan</Text>
+                </View>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>TODAY</Text>
+                </View>
+              </View>
+
+              <View style={styles.macrosContainer}>
+
+                {/* Row 1 */}
+                <View style={styles.row}>
+                  <View style={styles.gradientCardOuter}>
+                    <View style={styles.gradientCardInner}>
+                      <Text style={styles.macroLabel}>CALORIES</Text>
+                      <Text style={styles.macroConsumed}>{caloriesConsumed}</Text>
+                      <Text style={styles.macroGoal}>/ {caloriesGoal}</Text>
+                      <TrackerBar
+                        currentAmount={caloriesConsumed}
+                        totalAmount={caloriesGoal}
+                        size={40}
+                        strokeWidth={4}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.gradientCardOuter}>
+                    <View style={styles.gradientCardInner}>
+                      <Text style={styles.macroLabel}>PROTEIN</Text>
+                      <Text style={styles.macroConsumed}>{proteinConsumed}</Text>
+                      <Text style={styles.macroGoal}>/ {proteinGoal}</Text>
+                      <TrackerBar
+                        currentAmount={proteinConsumed}
+                        totalAmount={proteinGoal}
+                        size={40}
+                        strokeWidth={4}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Row 2 */}
+                <View style={styles.row}>
+                  <View style={styles.gradientCardOuter}>
+                    <View style={styles.gradientCardInner}>
+                      <Text style={styles.macroLabel}>CARBS</Text>
+                      <Text style={styles.macroConsumed}>{carbohydratesConsumed}</Text>
+                      <Text style={styles.macroGoal}>/ {carbohydratesGoal}</Text>
+                      <TrackerBar
+                        currentAmount={carbohydratesConsumed}
+                        totalAmount={carbohydratesGoal}
+                        size={40}
+                        strokeWidth={4}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.gradientCardOuter}>
+                    <View style={styles.gradientCardInner}>
+                      <Text style={styles.macroLabel}>FATS</Text>
+                      <Text style={styles.macroConsumed}>{fatsConsumed}</Text>
+                      <Text style={styles.macroGoal}>/ {fatsGoal}</Text>
+                      <TrackerBar
+                        currentAmount={fatsConsumed}
+                        totalAmount={fatsGoal}
+                        size={40}
+                        strokeWidth={4}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Buttons */}
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setMacrosModalVisible(true)}
+                  >
+                    <Ionicons name="add-outline" size={18} color="#0E0E12" />
+                    <Text style={styles.actionText}>Add Food</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionButtonOutline}
+                    onPress={() => navigation.navigate('UpdateMacrosPlan')}
+                  >
+                    <Ionicons name="options-outline" size={18} color={ACCENT} />
+                    <Text style={styles.actionTextOutline}>Edit Plan</Text>
+                  </TouchableOpacity>
+
+              
+                </View>
+
+              </View>
+            </View>
+
+
+  {/* ── Nutrition Card ── */}
+  <View style={styles.cardContainer}>
+
+{/* Card header */}
+<View style={styles.cardHeader}>
+  <View style={styles.cardHeaderLeft}>
+    <Ionicons name="nutrition-outline" size={16} color={ACCENT} />
+    <Text style={styles.cardHeaderText}>Weekly Fitness Plan</Text>
+  </View>
+  <View style={styles.badge}>
+    <Text style={styles.badgeText}>WEEKLY</Text>
+  </View>
+</View>
 
 <View style={styles.macrosContainer}>
 
   {/* Row 1 */}
-  <View style={styles.row}>   
-
-    {/* Card 1 */}
-    <LinearGradient
-      colors={['#1E293B', '#1E293B']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientCardOuter}
-    >
-      <LinearGradient
-        colors={['#0F172A', '#0F172A']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientCardInner}
-      >
-        <Text style={styles.cardTitle}>Calories</Text>
-        <Text style={styles.cardValue}>
-          {caloriesConsumed} / {caloriesGoal}
-        </Text>
+  <View style={styles.row}>
+    <View style={styles.gradientCardOuter}>
+      <View style={styles.gradientCardInner}>
+        <Text style={styles.macroLabel}>WORKOUTS</Text>
+        <Text style={styles.macroConsumed}>{weeklyWorkoutCount}</Text>
+        <Text style={styles.macroGoal}>/ {workoutSessionsGoal}</Text>
         <TrackerBar
-          currentAmount={caloriesConsumed}
-          totalAmount={caloriesGoal}
-          size={40}         // smaller
-          strokeWidth={4}   // thinner
-        />
-      </LinearGradient>
-    </LinearGradient>
-
-    {/* Card 2 */}
-    <LinearGradient
-      colors={['#1E293B', '#1E293B']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientCardOuter}
-    >
-      <LinearGradient
-        colors={['#0F172A', '#0F172A']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientCardInner}
-      >
-        <Text style={styles.cardTitle}>Protein</Text>
-        <Text style={styles.cardValue}>
-          {proteinConsumed} / {proteinGoal}
-        </Text>
-        <TrackerBar
-          currentAmount={proteinConsumed}
-          totalAmount={proteinGoal}
+          currentAmount={weeklyWorkoutCount}
+          totalAmount={workoutSessionsGoal}
           size={40}
           strokeWidth={4}
         />
-      </LinearGradient>
-    </LinearGradient>
+      </View>
+    </View>
 
+    <View style={styles.gradientCardOuter}>
+      <View style={styles.gradientCardInner}>
+        <Text style={styles.macroLabel}>CARDIO</Text>
+        <Text style={styles.macroConsumed}>{cardioGoal}</Text>
+        <Text style={styles.macroGoal}>/ {weeklyCardioCount}</Text>
+        <TrackerBar
+          currentAmount={weeklyCardioCount}
+          totalAmount={cardioGoal}
+          size={40}
+          strokeWidth={4}
+        />
+      </View>
+    </View>
   </View>
 
   {/* Row 2 */}
-  <View style={styles.row}>   
-
-    {/* Card 3 */}
-    <LinearGradient
-      colors={['#1E293B', '#1E293B']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientCardOuter}
-    >
-      <LinearGradient
-        colors={['#0F172A', '#0F172A']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientCardInner}
-      >
-        <Text style={styles.cardTitle}>Carbs</Text>
-        <Text style={styles.cardValue}>
-          {carbohydratesConsumed} / {carbohydratesGoal}
-        </Text>
+  <View style={styles.row}>
+    <View style={styles.gradientCardOuter}>
+      <View style={styles.gradientCardInner}>
+        <Text style={styles.macroLabel}>STEPS (DAILY)</Text>
+        <Text style={styles.macroConsumed}>{dailystepCount}</Text>
+        <Text style={styles.macroGoal}>/ {stepsGoal}</Text>
         <TrackerBar
-          currentAmount={carbohydratesConsumed}
-          totalAmount={carbohydratesGoal}
+          currentAmount={dailystepCount}
+          totalAmount={stepsGoal}
           size={40}
           strokeWidth={4}
         />
-      </LinearGradient> 
-    </LinearGradient>
+      </View>
+    </View>
 
-    {/* Card 4 */}
-    <LinearGradient
-      colors={['#1E293B', '#1E293B']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradientCardOuter}
-    >
-      <LinearGradient
-        colors={['#0F172A', '#0F172A']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientCardInner}
-      >
-        <Text style={styles.cardTitle}>Fats</Text>
-        <Text style={styles.cardValue}>
-          {fatsConsumed} / {fatsGoal}
-        </Text>
-        <TrackerBar
-          currentAmount={fatsConsumed}
-          totalAmount={fatsGoal}
-          size={40}
-          strokeWidth={4}
-        />
-      </LinearGradient>
-    </LinearGradient>
-
+    <View style={styles.gradientCardOuter}>
+     
+    </View>
   </View>
 
+            {/* Buttons */}
+            <View style={styles.buttonRow}>
+            
 
-  <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setMacrosModalVisible(true)}
-        >
-          <Ionicons name="add-outline" size={18} color="#fff" />
-            <Text style={styles.actionText}>Add</Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButtonOutline}
+                onPress={() => navigation.navigate('UpdateMacrosPlan')}
+              >
+                <Ionicons name="options-outline" size={18} color={ACCENT} />
+                <Text style={styles.actionTextOutline}>Edit Plan</Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('UpdateMacrosPlan')}
-        >
-        <Ionicons name="options-outline"size={18} color="#fff" />
-          <Text style={styles.actionText}>Update Macros Plan</Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButtonOutline}
+                onPress={() => navigation.navigate('RewardSystemScreen')}
+              >
+                <Ionicons name="options-outline" size={18} color={ACCENT} />
+                <Text style={styles.actionTextOutline}>Reward</Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
       </View>
 
-</View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-
-              </View>
-
- 
-
-    
-</View>
-              </ScrollView>
-
-              </KeyboardAvoidingView>
-
-
-              <AddMacrosModal
-                visible={macrosModalVisible}
-
-                caloriesConsumed={caloriesConsumed}
-                proteinConsumed={proteinConsumed}
-                carbohydratesConsumed={carbohydratesConsumed}
-                fatsConsumed={fatsConsumed}
-              
-                setCaloriesConsumed={SetCaloriesConsumed}
-                setProteinConsumed={SetProteinConsumed}
-                setCarbohydratesConsumed={SetCarbohydratesConsumed}
-                setFatsConsumed={SetFatsConsumed}
-              
-                onClose={() => setMacrosModalVisible(false)}
-              />
+      <AddMacrosModal
+        visible={macrosModalVisible}
+        caloriesConsumed={caloriesConsumed}
+        proteinConsumed={proteinConsumed}
+        carbohydratesConsumed={carbohydratesConsumed}
+        fatsConsumed={fatsConsumed}
+        setCaloriesConsumed={SetCaloriesConsumed}
+        setProteinConsumed={SetProteinConsumed}
+        setCarbohydratesConsumed={SetCarbohydratesConsumed}
+        setFatsConsumed={SetFatsConsumed}
+        onClose={() => setMacrosModalVisible(false)}
+      />
 
 
 
+      <AddComingSoonModal
+        visible={comingSoonModalVisible}
+        onClose={() => setComingSoonModalVisible(false)}
+      />
+
+
+      <XPRewardSuccessModal
+          profile={profile}
+          rewardNotficationType={rewardNotficationType}
+          onClose={() =>
+            setRewardNotificationModalVisible(false)
+          }
+      />
            
-
-
-
-    </LinearGradient>
-  </View>
+    </View>
   );
 }
+
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const ACCENT    = '#C6F135';   // electric lime
+const BG        = '#0E0E12';   // page background
+const CARD_BG   = '#22222E';   // outer card
+const MACRO_OUT = '#2C2C3C';   // macro card outer
+const MACRO_IN  = '#252532';   // macro card inner
+const BORDER    = '#42425A';   // brighter border for visibility
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: BG,
   },
-  gradientBackground: {
+  center: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: BG,
   },
-  keyboardView: {
-    flex: 1,
+  emptyText: {
+    color: '#B0B0C8',   // readable on dark bg
+    fontSize: 15,
   },
+
+  // Blobs
+  blobTopRight: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: ACCENT,
+    opacity: 0.05,
+    top: -80,
+    right: -80,
+  },
+  blobBottomLeft: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#5B4FE8',
+    opacity: 0.06,
+    bottom: 60,
+    left: -80,
+  },
+
+  keyboardView: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 70,
   },
-
-  content: { flex: 1, backgroundColor: '#0000' },
-
+  content: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
 
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
-  iconGradient: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+  
+  sideContainer: {
+    width: 55, // same width on both sides
+    alignItems: 'center',
+  },
+  
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+
+  XPheader: {
+    width: '100%',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+    
+  image: {
+    width: 250,
+    height: 200,
+    resizeMode: 'contain',
+    alignSelf: 'center',
+
+  },
+  
+  profileImageContainer: {
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+    backgroundColor: ACCENT,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#f59e0b',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 15,
   },
-  iconText: {
-    fontSize: 45,
+  
+  headerCenter: {
+    flex: 1,
+    marginHorizontal: 15,
   },
+  
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    letterSpacing: -1,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  
+  macroLabelSM: {
+    fontSize: 12,
+    color: '#aaa',
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  
+  title: {
+    fontSize: 24,           // bigger — was 20
+    fontWeight: '900',
+    color: '#FFFFFF',       // pure white
+    marginBottom: 6,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+    lineHeight: 30,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.95)',
+    fontSize: 14,
+    color: '#A0A0BC',       // lighter grey — was #7B7B90
+    marginBottom: 14,
     fontWeight: '500',
   },
-  cardOuter: {
-    borderRadius: 24,
-    padding: 2,
+
+  // ── Nutrition card ──
+  cardContainer: {
+    backgroundColor: CARD_BG,
+    borderRadius: 18,
+    padding: 16,
+    width: width * 0.95,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: BORDER,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.4,
-    shadowRadius: 25,
-    elevation: 15,
-  },
-  cardInner: {
-    borderRadius: 22,
-    padding: 28,
-    backgroundColor: '#0F172A',
-  },
-  cardTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  cardSubtitle: {
-    fontSize: 15,
-    color: '#A0A3A8',
-    marginBottom: 28,
-    textAlign: 'center',
-  },
-  form: {
-    width: '100%',
-  },
-  inputWrapper: {
-    marginBottom: 20,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginLeft: 6,
-  },
-  inputContainer: {
-    backgroundColor: '#1C1F26',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  inputContainerFocused: {
-    borderColor: '#10b981',
-    backgroundColor: '#0F172A',
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  inputContainerError: {
-    borderColor: '#FF3B30',
-  },
-  input: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#FFFFFF',
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: '#10b981',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF3B30',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 8,
-    flex: 1,
-  },
-  loginButtonWrapper: {
-    marginBottom: 24,
-  },
-  loginButton: {
-    borderRadius: 14,
-    paddingVertical: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#A0A3A8',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  socialContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  socialButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  socialButtonGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 6,
+    marginTop: 10,
   },
-  footer: {
+  cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 32,
+    marginBottom: 14,
   },
-  footerText: {
-    color: 'rgba(255, 255, 255, 0.9)',
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  cardHeaderText: {
+    color: '#FFFFFF',       // pure white header
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  linkText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginLeft: 6,
-    textDecorationLine: 'underline',
+  badge: {
+    backgroundColor: ACCENT + '22',
+    borderWidth: 1,
+    borderColor: ACCENT + '66',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
   },
-
-
-    headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-    marginTop:10
-  },
-  
-  headerLeft: {
-    flex: 1,
-  },
-  
-  headerRight: {
-    justifyContent: "center",
-    alignItems: "flex-end",
+  badgeText: {
+    color: ACCENT,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1.5,
   },
 
   macrosContainer: {
-    paddingVertical: 8,
     gap: 8,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
+
+  // Macro cards
   gradientCardOuter: {
-    borderRadius: 12,
-    padding: 2,
-    flex: 1, // cards share space
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    backgroundColor: MACRO_OUT,
+    flex: 1,
     marginHorizontal: 4,
+    overflow: 'hidden',
   },
   gradientCardInner: {
-    backgroundColor: '#0F172A',
-    borderRadius: 10,
-    paddingVertical: 8,
+    backgroundColor: MACRO_IN,
+    borderRadius: 11,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
     alignItems: 'center',
+    gap: 2,
   },
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F1F5F9',
-    marginBottom: 2,
-  },
-  cardValue: {
-    fontSize: 11,
-    color: '#CBD5E1',
+
+  // Text inside macro cards — completely reworked for readability
+  macroLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    // color: '#A0A0BC',       // clear medium-grey label
+    color: '#ffffff',       // clear medium-grey label
+    letterSpacing: 1.2,
     marginBottom: 4,
   },
+  macroLabelSM: {
+    fontSize: 14,
+    fontWeight: '700',
+    // color: '#A0A0BC',       // clear medium-grey label
+    color: '#ffffff',       // clear medium-grey label
+    letterSpacing: 1.2,
+    marginBottom: 4,
+  },
+  macroConsumed: {
+    fontSize: 20,           // big and bold — the main number
+    fontWeight: '800',
+    color: '#FFFFFF',       // pure white
+    letterSpacing: -0.5,
+  },
+  macroGoal: {
+    fontSize: 12,
+    fontWeight: '500',
+    // color: '#7070A0',       // clearly dimmer than consumed
+    color: '#ffffff',       // clear medium-grey label
+    marginBottom: 6,
+  },
 
-  actionText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  cardContainer: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
-    width: width * 0.95, // almost full width
-    alignSelf: 'center', // center horizontally
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-    marginTop:10
-  },
-
-  cardHeader:
-  {
-    marginBottom:10
-  },
+  // Buttons
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 8,
+    marginTop: 4,
   },
-
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3B82F6',
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 4,
+    backgroundColor: ACCENT,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 5,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
-
   actionText: {
-    color: '#fff',
+    color: '#0E0E12',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  actionButtonOutline: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: ACCENT + '66',
+    gap: 5,
+  },
+  actionTextOutline: {
+    color: ACCENT,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
-
 

@@ -1,21 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
-const daysOfWeek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const daysOfWeek = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+// ─── Palette ─────────────────────────────────────────────────────
+const ACCENT = '#C6F135';
+const BG = '#0E0E12';
+const CARD_BG = '#22222E';
+const DAY_OUT = '#2C2C3C';
+const DAY_IN = '#252532';
+const BORDER = '#42425A';
 
 export default function PlanYourWeekScreen({ navigation }) {
+
   const [step, setStep] = useState(0);
+
   const [maxGymDays, setMaxGymDays] = useState(0);
   const [cardioGoal, setCardioGoal] = useState(0);
 
   const [selectedGymDays, setSelectedGymDays] = useState([]);
-  const [cardioPlan, setCardioPlan] = useState({}); // { Monday: 30, Wednesday: 30 }
+  const [cardioPlan, setCardioPlan] = useState({});
 
   useEffect(() => {
     const loadProfile = async () => {
+
       const { data: { user } } = await supabase.auth.getUser();
+
       const { data } = await supabase
         .from('userProfiles')
         .select('workoutSessionsGoal, cardioGoal')
@@ -25,50 +57,83 @@ export default function PlanYourWeekScreen({ navigation }) {
       setMaxGymDays(data?.workoutSessionsGoal ?? 0);
       setCardioGoal(data?.cardioGoal ?? 0);
     };
+
     loadProfile();
   }, []);
 
   const toggleGymDay = (day) => {
+
     if (selectedGymDays.includes(day)) {
-      setSelectedGymDays(selectedGymDays.filter(d => d !== day));
+      setSelectedGymDays(
+        selectedGymDays.filter(d => d !== day)
+      );
+
     } else if (selectedGymDays.length < maxGymDays) {
-      setSelectedGymDays([...selectedGymDays, day]);
+      setSelectedGymDays([
+        ...selectedGymDays,
+        day
+      ]);
     }
   };
 
   const toggleCardioDay = (day) => {
+
     if (cardioPlan[day]) {
+
       const newPlan = { ...cardioPlan };
+
       delete newPlan[day];
+
       setCardioPlan(newPlan);
+
     } else {
-      setCardioPlan({ ...cardioPlan, [day]: 0 });
+
+      setCardioPlan({
+        ...cardioPlan,
+        [day]: 0,
+      });
     }
   };
 
   const updateCardioMinutes = (day, minutes) => {
-    setCardioPlan({ ...cardioPlan, [day]: parseInt(minutes, 10) || 0 });
+
+    setCardioPlan({
+      ...cardioPlan,
+      [day]: parseInt(minutes, 10) || 0,
+    });
   };
 
-  const totalCardioMinutes = Object.values(cardioPlan).reduce((a, b) => a + b, 0);
-
-  
-  
+  const totalCardioMinutes =
+    Object.values(cardioPlan)
+      .reduce((a, b) => a + b, 0);
 
   const savePlan = async () => {
+
     try {
+
       const weeklyPlan = {};
+
       selectedGymDays.forEach(day => {
-        weeklyPlan[day] = { type: 'Workout', cardio: 0 };
+        weeklyPlan[day] = {
+          type: 'Workout',
+          cardio: 0,
+        };
       });
+
       Object.entries(cardioPlan).forEach(([day, minutes]) => {
-        weeklyPlan[day] = { type: 'Cardio', cardio: minutes };
+        weeklyPlan[day] = {
+          type: 'Cardio',
+          cardio: minutes,
+        };
       });
-  
-      await AsyncStorage.setItem('weeklyPlan', JSON.stringify(weeklyPlan));
-  
-      // Update DB first
+
+      await AsyncStorage.setItem(
+        'weeklyPlan',
+        JSON.stringify(weeklyPlan)
+      );
+
       const { data: { user } } = await supabase.auth.getUser();
+
       const { error } = await supabase
         .from('userProfiles')
         .update({
@@ -76,685 +141,628 @@ export default function PlanYourWeekScreen({ navigation }) {
           lastupdate_at: new Date().toISOString(),
         })
         .eq('id', user.id);
-  
-      if (error) throw error;
-  
-      // Only navigate after DB update succeeds
+
+      if (error) {
+        throw error;
+      }
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
+
     } catch (err) {
-      console.error('Save plan error:', err.message);
+      console.error(
+        'Save plan error:',
+        err.message
+      );
     }
   };
-  
 
-return (
-  <View style={styles.container}>
-    <ScrollView
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      {step === 0 && maxGymDays > 0 && (
-        <>
-          <Text style={styles.title}>
-            Choose {maxGymDays} Gym Days
-          </Text>
+  return (
 
-          <View style={styles.grid}>
-            {daysOfWeek.map((day) => (
-              <TouchableOpacity
-                key={day}
-                style={[
-                  styles.dayCard,
-                  selectedGymDays.includes(day) && styles.selectedCard
-                ]}
-                onPress={() => toggleGymDay(day)}
-              >
-                <Text style={styles.dayText}>{day.slice(0,3)}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </>
-      )}
+    <View style={styles.container}>
 
-      {step === 1 && (
-        <>
-          <Text style={styles.title}>
-            Cardio Plan ({cardioGoal} mins goal)
-          </Text>
+      <StatusBar barStyle="light-content" />
 
-          {daysOfWeek.map((day) => (
-            <View key={day} style={styles.cardioRow}>
-              <TouchableOpacity
-                style={[
-                  styles.dayCardSmall,
-                  cardioPlan[day] !== undefined && styles.selectedCard
-                ]}
-                onPress={() => toggleCardioDay(day)}
-              >
-                <Text style={styles.dayText}>{day.slice(0,3)}</Text>
-              </TouchableOpacity>
+      {/* Background blobs */}
+      <View style={styles.blobTopRight} />
+      <View style={styles.blobBottomLeft} />
 
-              {cardioPlan[day] !== undefined && (
-                <TextInput
-                  style={styles.minutesInput}
-                  placeholder="Min"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                  value={String(cardioPlan[day])}
-                  onChangeText={(val) => updateCardioMinutes(day, val)}
-                />
-              )}
-            </View>
-          ))}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={
+          Platform.OS === 'ios'
+            ? 'padding'
+            : 'height'
+        }
+      >
 
-          <Text style={styles.summary}>
-            {totalCardioMinutes} / {cardioGoal} mins
-          </Text>
-        </>
-      )}
-    </ScrollView>
-
-    {/* Sticky Bottom Button */}
-    <View style={styles.bottomBar}>
-      {step === 0 && selectedGymDays.length === maxGymDays && (
-        <TouchableOpacity style={styles.primaryButton} onPress={() => setStep(1)}>
-          <Text style={styles.primaryText}>Continue</Text>
-        </TouchableOpacity>
-      )}
-
-      {step === 1 && (
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            totalCardioMinutes !== cardioGoal && styles.disabledButton
-          ]}
-          disabled={totalCardioMinutes !== cardioGoal}
-          onPress={savePlan}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.primaryText}>Save Plan</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  </View>
 
-)};
+          {/* Header */}
+          <View style={styles.header}>
+
+            <Text style={styles.title}>
+              Plan Your Week
+            </Text>
+
+            <Text style={styles.subtitle}>
+              Build your perfect fitness routine
+            </Text>
+
+            {/* Progress */}
+            <View style={styles.progressContainer}>
+
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width:
+                        step === 0
+                          ? '50%'
+                          : '100%',
+                    },
+                  ]}
+                />
+              </View>
+
+              <Text style={styles.progressText}>
+                Step {step + 1} of 2
+              </Text>
+
+            </View>
+
+          </View>
+
+          {/* Main Card */}
+          <View style={styles.cardContainer}>
+
+            {/* Step Header */}
+            <View style={styles.cardHeader}>
+
+              <View style={styles.cardHeaderLeft}>
+                <Ionicons
+                  name={
+                    step === 0
+                      ? 'barbell-outline'
+                      : 'heart-outline'
+                  }
+                  size={16}
+                  color={ACCENT}
+                />
+
+                <Text style={styles.cardHeaderText}>
+                  {step === 0
+                    ? `Choose ${maxGymDays} Gym Days`
+                    : `Cardio Plan`}
+                </Text>
+              </View>
+
+              {step === 1 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {cardioGoal} MIN GOAL
+                  </Text>
+                </View>
+              )}
+
+            </View>
+
+            {/* Gym Days */}
+            {step === 0 && (
+
+              <View style={styles.grid}>
+
+                {daysOfWeek.map((day) => {
+
+                  const selected =
+                    selectedGymDays.includes(day);
+
+                  return (
+
+                    <TouchableOpacity
+                      key={day}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.dayOuter,
+                        selected &&
+                        styles.dayOuterSelected,
+                      ]}
+                      onPress={() =>
+                        toggleGymDay(day)
+                      }
+                    >
+
+                      <View
+                        style={[
+                          styles.dayInner,
+                          selected &&
+                          styles.dayInnerSelected,
+                        ]}
+                      >
+
+                        <Text
+                          style={[
+                            styles.dayText,
+                            selected &&
+                            styles.dayTextSelected,
+                          ]}
+                        >
+                          {day.slice(0, 3)}
+                        </Text>
+
+                      </View>
+
+                    </TouchableOpacity>
+                  );
+                })}
+
+              </View>
+            )}
+
+            {/* Cardio */}
+            {step === 1 && (
+
+              <View style={styles.cardioContainer}>
+
+                {daysOfWeek.map((day) => {
+
+                  const active =
+                    cardioPlan[day] !== undefined;
+
+                  return (
+
+                    <View
+                      key={day}
+                      style={styles.cardioRow}
+                    >
+
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[
+                          styles.dayOuterSmall,
+                          active &&
+                          styles.dayOuterSelected,
+                        ]}
+                        onPress={() =>
+                          toggleCardioDay(day)
+                        }
+                      >
+
+                        <View
+                          style={[
+                            styles.dayInnerSmall,
+                            active &&
+                            styles.dayInnerSelected,
+                          ]}
+                        >
+
+                          <Text
+                            style={[
+                              styles.dayText,
+                              active &&
+                              styles.dayTextSelected,
+                            ]}
+                          >
+                            {day.slice(0, 3)}
+                          </Text>
+
+                        </View>
+
+                      </TouchableOpacity>
+
+                      {active && (
+
+                        <TextInput
+                          style={styles.minutesInput}
+                          placeholder="Minutes"
+                          placeholderTextColor="#7070A0"
+                          keyboardType="numeric"
+                          value={String(cardioPlan[day])}
+                          onChangeText={(val) =>
+                            updateCardioMinutes(day, val)
+                          }
+                        />
+                      )}
+
+                    </View>
+                  );
+                })}
+
+                <View style={styles.summaryCard}>
+
+                  <Text style={styles.summaryLabel}>
+                    TOTAL CARDIO
+                  </Text>
+
+                  <Text style={styles.summaryValue}>
+                    {totalCardioMinutes} / {cardioGoal} mins
+                  </Text>
+
+                </View>
+
+              </View>
+            )}
+
+          </View>
+
+        </ScrollView>
+
+        {/* Bottom Bar */}
+        <View style={styles.bottomBar}>
+
+          {step === 1 && (
+
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => setStep(0)}
+            >
+
+              <Ionicons
+                name="arrow-back-outline"
+                size={18}
+                color={ACCENT}
+              />
+
+            </TouchableOpacity>
+          )}
+
+          {step === 0 && (
+
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                selectedGymDays.length !== maxGymDays &&
+                styles.disabledButton,
+              ]}
+              disabled={
+                selectedGymDays.length !== maxGymDays
+              }
+              onPress={() => setStep(1)}
+            >
+
+              <Text style={styles.primaryText}>
+                Continue
+              </Text>
+
+            </TouchableOpacity>
+          )}
+
+          {step === 1 && (
+
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                totalCardioMinutes !== cardioGoal &&
+                styles.disabledButton,
+              ]}
+              disabled={
+                totalCardioMinutes !== cardioGoal
+              }
+              onPress={savePlan}
+            >
+
+              <Text style={styles.primaryText}>
+                Save Plan
+              </Text>
+
+            </TouchableOpacity>
+          )}
+
+        </View>
+
+      </KeyboardAvoidingView>
+
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: BG,
+  },
+
+  // ── Background ─────────────────────────
+  blobTopRight: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: ACCENT,
+    opacity: 0.05,
+    top: -80,
+    right: -80,
+  },
+
+  blobBottomLeft: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#5B4FE8',
+    opacity: 0.06,
+    bottom: 60,
+    left: -80,
   },
 
   scrollContent: {
-    padding: 16,
-    paddingBottom: 120,
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 140,
+  },
+
+  // ── Header ─────────────────────────────
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
 
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 20,
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.7,
+    marginBottom: 6,
   },
 
+  subtitle: {
+    fontSize: 14,
+    color: '#A0A0BC',
+    marginBottom: 24,
+  },
+
+  progressContainer: {
+    width: '100%',
+  },
+
+  progressTrack: {
+    height: 8,
+    backgroundColor: '#252532',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+
+  progressFill: {
+    height: '100%',
+    backgroundColor: ACCENT,
+    borderRadius: 10,
+  },
+
+  progressText: {
+    color: '#A0A0BC',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+
+  // ── Main Card ──────────────────────────
+  cardContainer: {
+    backgroundColor: CARD_BG,
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+
+  cardHeaderText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  badge: {
+    backgroundColor: ACCENT + '22',
+    borderWidth: 1,
+    borderColor: ACCENT + '55',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+
+  badgeText: {
+    color: ACCENT,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+
+  // ── Grid ───────────────────────────────
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
 
-  dayCard: {
+  dayOuter: {
     width: '30%',
     aspectRatio: 1,
-    borderRadius: 14,
-    backgroundColor: '#1E293B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+    borderRadius: 18,
+    backgroundColor: DAY_OUT,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
 
-  dayCardSmall: {
-    width: 70,
-    height: 70,
-    borderRadius: 14,
-    backgroundColor: '#1E293B',
+  dayInner: {
+    flex: 1,
+    backgroundColor: DAY_IN,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 16,
   },
 
-  selectedCard: {
-    backgroundColor: '#22C55E',
+  dayOuterSelected: {
+    borderColor: ACCENT,
+  },
+
+  dayInnerSelected: {
+    backgroundColor: ACCENT,
   },
 
   dayText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+
+  dayTextSelected: {
+    color: '#0E0E12',
+  },
+
+  // ── Cardio ─────────────────────────────
+  cardioContainer: {
+    gap: 12,
   },
 
   cardioRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+  },
+
+  dayOuterSmall: {
+    width: 78,
+    height: 78,
+    borderRadius: 18,
+    backgroundColor: DAY_OUT,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    overflow: 'hidden',
+  },
+
+  dayInnerSmall: {
+    flex: 1,
+    backgroundColor: DAY_IN,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
   },
 
   minutesInput: {
-    backgroundColor: '#1E293B',
-    width: 80,
-    height: 50,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    color: '#fff',
-    textAlign: 'center',
+    flex: 1,
+    marginLeft: 12,
+    backgroundColor: DAY_IN,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    color: '#FFFFFF',
+    height: 56,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    fontWeight: '700',
   },
 
-  summary: {
-    marginTop: 20,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#22C55E',
+  summaryCard: {
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: ACCENT + '12',
+    borderWidth: 1,
+    borderColor: ACCENT + '33',
+    alignItems: 'center',
   },
 
+  summaryLabel: {
+    color: '#A0A0BC',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    marginBottom: 4,
+  },
+
+  summaryValue: {
+    color: ACCENT,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+
+  // ── Bottom Bar ─────────────────────────
   bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
-    backgroundColor: '#0F172A',
+
+    flexDirection: 'row',
+    gap: 10,
+
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 30,
+
+    backgroundColor: BG,
     borderTopWidth: 1,
-    borderTopColor: '#1F2937',
+    borderTopColor: BORDER,
+  },
+
+  backButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    borderWidth: 1.5,
+    borderColor: ACCENT + '55',
+    backgroundColor: 'transparent',
   },
 
   primaryButton: {
-    backgroundColor: '#22C55E',
+    flex: 1,
+
+    backgroundColor: ACCENT,
+
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 16,
+
     alignItems: 'center',
+    justifyContent: 'center',
+
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
 
   disabledButton: {
-    backgroundColor: '#374151',
+    opacity: 0.35,
   },
 
   primaryText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
+    color: '#0E0E12',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });
-
-// 
-
-
-// import React, { useState, useEffect } from 'react';
-// import { 
-// View, 
-// Text, 
-// TouchableOpacity, 
-// StyleSheet, 
-// TextInput, 
-// ScrollView, 
-// StatusBar,
-// KeyboardAvoidingView,
-// Platform
-// } from 'react-native';
-
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { LinearGradient } from 'expo-linear-gradient';
-// import { Ionicons } from '@expo/vector-icons';
-// import { supabase } from '../lib/supabase';
-
-// const daysOfWeek = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-
-// export default function PlanYourWeekScreen({ navigation }) {
-
-// const [step, setStep] = useState(0);
-// const [maxGymDays, setMaxGymDays] = useState(0);
-// const [cardioGoal, setCardioGoal] = useState(0);
-
-// const [selectedGymDays, setSelectedGymDays] = useState([]);
-// const [cardioPlan, setCardioPlan] = useState({});
-
-// useEffect(() => {
-// const loadProfile = async () => {
-
-// const { data: { user } } = await supabase.auth.getUser();
-
-// const { data } = await supabase
-// .from('userProfiles')
-// .select('workoutSessionsGoal, cardioGoal')
-// .eq('id', user.id)
-// .single();
-
-// setMaxGymDays(data?.workoutSessionsGoal ?? 0);
-// setCardioGoal(data?.cardioGoal ?? 0);
-
-// };
-
-// loadProfile();
-
-// }, []);
-
-// const toggleGymDay = (day) => {
-
-// if (selectedGymDays.includes(day)) {
-
-// setSelectedGymDays(selectedGymDays.filter(d => d !== day));
-
-// } else if (selectedGymDays.length < maxGymDays) {
-
-// setSelectedGymDays([...selectedGymDays, day]);
-
-// }
-
-// };
-
-// const toggleCardioDay = (day) => {
-
-// if (cardioPlan[day]) {
-
-// const newPlan = { ...cardioPlan };
-// delete newPlan[day];
-// setCardioPlan(newPlan);
-
-// } else {
-
-// setCardioPlan({ ...cardioPlan, [day]: 0 });
-
-// }
-
-// };
-
-// const updateCardioMinutes = (day, minutes) => {
-
-// setCardioPlan({ ...cardioPlan, [day]: parseInt(minutes, 10) || 0 });
-
-// };
-
-// const totalCardioMinutes = Object.values(cardioPlan).reduce((a, b) => a + b, 0);
-
-// const savePlan = async () => {
-
-// try {
-
-// const weeklyPlan = {};
-
-// selectedGymDays.forEach(day => {
-// weeklyPlan[day] = { type: 'Workout', cardio: 0 };
-// });
-
-// Object.entries(cardioPlan).forEach(([day, minutes]) => {
-// weeklyPlan[day] = { type: 'Cardio', cardio: minutes };
-// });
-
-// await AsyncStorage.setItem('weeklyPlan', JSON.stringify(weeklyPlan));
-
-// const { data: { user } } = await supabase.auth.getUser();
-
-// await supabase
-// .from('userProfiles')
-// .update({
-// UserHasWeeklyPlanSetup: true,
-// lastupdate_at: new Date().toISOString(),
-// })
-// .eq('id', user.id);
-
-// navigation.reset({
-// index: 0,
-// routes: [{ name: 'Home' }],
-// });
-
-// } catch (err) {
-
-// console.error(err.message);
-
-// }
-
-// };
-
-// return (
-
-// <View style={styles.container}>
-
-// <StatusBar barStyle="light-content" />
-
-// <LinearGradient
-// colors={['#1e3a8a', '#0f766e', '#065f46']}
-// style={styles.gradientBackground}
-// >
-
-// <KeyboardAvoidingView
-// style={{ flex: 1 }}
-// behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-// >
-
-// <ScrollView
-// contentContainerStyle={styles.scrollContent}
-// showsVerticalScrollIndicator={false}
-// >
-
-// <View style={styles.content}>
-
-// {/* Progress */}
-
-// <View style={styles.progressContainer}>
-
-// <View style={styles.progressBar}>
-// <View
-// style={[
-// styles.progressFill,
-// { width: step === 0 ? '50%' : '100%' }
-// ]}
-// />
-// </View>
-
-// <Text style={styles.progressText}>
-// Step {step + 1} of 2
-// </Text>
-
-// </View>
-
-// {/* Card */}
-
-// <LinearGradient
-// colors={['#1E293B','#1E293B']}
-// style={styles.cardOuter}
-// >
-
-// <LinearGradient
-// colors={['#0F172A','#0F172A']}
-// style={styles.cardInner}
-// >
-
-// <Text style={styles.question}>
-
-// {step === 0
-// ? `Choose ${maxGymDays} Gym Days`
-// : `Cardio Plan (${cardioGoal} mins)`
-// }
-
-// </Text>
-
-// {/* Gym Days */}
-
-// {step === 0 && (
-
-// <View style={styles.grid}>
-
-// {daysOfWeek.map(day => (
-
-// <TouchableOpacity
-// key={day}
-// style={[
-// styles.dayCard,
-// selectedGymDays.includes(day) && styles.selectedCard
-// ]}
-// onPress={() => toggleGymDay(day)}
-// >
-
-// <Text style={styles.dayText}>{day.slice(0,3)}</Text>
-
-// </TouchableOpacity>
-
-// ))}
-
-// </View>
-
-// )}
-
-// {/* Cardio */}
-
-// {step === 1 && (
-
-// <>
-
-// {daysOfWeek.map(day => (
-
-// <View key={day} style={styles.cardioRow}>
-
-// <TouchableOpacity
-// style={[
-// styles.dayCardSmall,
-// cardioPlan[day] !== undefined && styles.selectedCard
-// ]}
-// onPress={() => toggleCardioDay(day)}
-// >
-
-// <Text style={styles.dayText}>{day.slice(0,3)}</Text>
-
-// </TouchableOpacity>
-
-// {cardioPlan[day] !== undefined && (
-
-// <TextInput
-// style={styles.minutesInput}
-// keyboardType="numeric"
-// value={String(cardioPlan[day])}
-// onChangeText={(val)=>updateCardioMinutes(day,val)}
-// />
-
-// )}
-
-// </View>
-
-// ))}
-
-// <Text style={styles.summary}>
-// {totalCardioMinutes} / {cardioGoal} mins
-// </Text>
-
-// </>
-
-// )}
-
-// {/* Buttons */}
-
-// <View style={styles.buttonContainer}>
-
-// {step === 1 && (
-
-// <TouchableOpacity
-// style={styles.backButton}
-// onPress={()=>setStep(0)}
-// >
-
-// <Ionicons name="arrow-back-outline" size={20} color="#fff" />
-// <Text style={styles.backButtonText}>Back</Text>
-
-// </TouchableOpacity>
-
-// )}
-
-// <TouchableOpacity
-// style={styles.nextButton}
-// onPress={() => step === 0 ? setStep(1) : savePlan()}
-// disabled={step === 1 && totalCardioMinutes !== cardioGoal}
-// >
-
-// <LinearGradient
-// colors={['#10b981','#059669']}
-// style={styles.nextButtonGradient}
-// >
-
-// <Text style={styles.nextButtonText}>
-// {step === 0 ? 'Next' : 'Save Plan'}
-// </Text>
-
-// <Ionicons name="arrow-forward-outline" size={20} color="#fff" />
-
-// </LinearGradient>
-
-// </TouchableOpacity>
-
-// </View>
-
-// </LinearGradient>
-// </LinearGradient>
-
-// </View>
-// </ScrollView>
-// </KeyboardAvoidingView>
-// </LinearGradient>
-// </View>
-
-// );
-
-// }
-
-// const styles = StyleSheet.create({
-
-// container:{ flex:1 },
-
-// gradientBackground:{ flex:1 },
-
-// scrollContent:{
-// flexGrow:1,
-// justifyContent:'center',
-// paddingVertical:40,
-// paddingHorizontal:20
-// },
-
-// content:{ flex:1, justifyContent:'center' },
-
-// progressContainer:{ marginBottom:24 },
-
-// progressBar:{
-// height:6,
-// backgroundColor:'rgba(255,255,255,0.2)',
-// borderRadius:3,
-// overflow:'hidden',
-// marginBottom:8
-// },
-
-// progressFill:{
-// height:'100%',
-// backgroundColor:'#10b981'
-// },
-
-// progressText:{
-// color:'rgba(255,255,255,0.9)',
-// fontWeight:'600',
-// textAlign:'center'
-// },
-
-// cardOuter:{
-// borderRadius:24,
-// padding:2
-// },
-
-// cardInner:{
-// borderRadius:22,
-// padding:28,
-// backgroundColor:'#0F172A'
-// },
-
-// question:{
-// fontSize:24,
-// fontWeight:'bold',
-// color:'#fff',
-// textAlign:'center',
-// marginBottom:20
-// },
-
-// grid:{
-// flexDirection:'row',
-// flexWrap:'wrap',
-// justifyContent:'space-between'
-// },
-
-// dayCard:{
-// width:'30%',
-// aspectRatio:1,
-// borderRadius:14,
-// backgroundColor:'#1E293B',
-// justifyContent:'center',
-// alignItems:'center',
-// marginBottom:12
-// },
-
-// dayCardSmall:{
-// width:70,
-// height:70,
-// borderRadius:14,
-// backgroundColor:'#1E293B',
-// justifyContent:'center',
-// alignItems:'center'
-// },
-
-// selectedCard:{
-// backgroundColor:'#10b981'
-// },
-
-// dayText:{
-// color:'#fff',
-// fontWeight:'600'
-// },
-
-// cardioRow:{
-// flexDirection:'row',
-// alignItems:'center',
-// justifyContent:'space-between',
-// marginBottom:14
-// },
-
-// minutesInput:{
-// backgroundColor:'#1C1F26',
-// width:80,
-// height:50,
-// borderRadius:12,
-// paddingHorizontal:12,
-// color:'#fff',
-// textAlign:'center'
-// },
-
-// summary:{
-// marginTop:20,
-// fontSize:16,
-// fontWeight:'600',
-// color:'#10b981',
-// textAlign:'center'
-// },
-
-// buttonContainer:{
-// flexDirection:'row',
-// gap:12,
-// marginTop:24
-// },
-
-// backButton:{
-// flex:1,
-// flexDirection:'row',
-// alignItems:'center',
-// justifyContent:'center',
-// backgroundColor:'#374151',
-// paddingVertical:16,
-// borderRadius:12,
-// gap:8
-// },
-
-// backButtonText:{
-// color:'#fff',
-// fontWeight:'600'
-// },
-
-// nextButton:{ flex:1 },
-
-// nextButtonGradient:{
-// flexDirection:'row',
-// alignItems:'center',
-// justifyContent:'center',
-// paddingVertical:16,
-// borderRadius:12,
-// gap:8
-// },
-
-// nextButtonText:{
-// color:'#fff',
-// fontWeight:'bold'
-// }
-
-// });

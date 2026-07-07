@@ -11,9 +11,18 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.conorh7896.fitbounty",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {},
-    "web": {}
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "0d836de9-1778-4836-bbd7-74950b6c1db9"
+      }
+    }
   }
 }

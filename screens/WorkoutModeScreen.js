@@ -1,497 +1,576 @@
-import React, { useRef, useEffect , useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
+import React, { useRef, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
   TextInput,
-  StatusBar 
+  StatusBar,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../lib/supabase';
 import Timer from '../components/Timer';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../lib/supabase';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import RestTimer from '../components/RestTimer';
-import { getProfile } from '../lib/GetProfile';
 
-export default function WorkoutModeScreen({ currentAmount = 43, totalAmount = 100 }) {
-  const progress = Math.min(currentAmount / totalAmount, 1);
+export default function WorkoutModeScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+
+  const { workoutName, exercises: rawExercises = [] } = route.params ?? {};
+
+  const workouts = rawExercises.map((ex, i) => ({
+    id: ex.id ?? i,
+    name: ex.exercise_name ?? 'Unknown',
+    sets: parseInt(ex.sets) || 3,
+    reps: ex.reps ?? '-',
+    pr: null,
+    restTimer: ex.rest_timer ?? 120,
+  }));
+
+  const totalSets = workouts.reduce((acc, w) => acc + w.sets, 0);
+
+  const restTimerRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [profileUnitMeasurement, setProfileUnitMeasurement] = useState('kg');
+  const [completedSets, setCompletedSets] = useState({});
+  const [focusedInput, setFocusedInput] = useState(null);
+  const [showRestTimer, setShowRestTimer] = useState(false);
+  const [currentWorkout, setCurrentWorkout] = useState(null);
+  const [currentSetIndex, setCurrentSetIndex] = useState(null);
+  const [enteredWeight, setEnteredWeight] = useState({});
+  const [enteredReps, setEnteredReps] = useState({});
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryData, setSummaryData] = useState([]);
+  const [newPRs, setNewPRs] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [defaultXPRewardAmount, setDefaultXPRewardAmount] = useState();
 
-  const [profileUnitMeasurement , SetProfileUnitMeasurement] = useState();
-
-  const workouts = [
-    { id: 1, name: 'Leg Press', sets: 3, reps: '8-12', pr: 33  , restTimer: 180 },
-    { id: 2, name: 'Squats', sets: 4, reps: '8-12', pr: 45 , restTimer: 180 },
-    { id: 3, name: 'Leg Extension', sets: 3, reps: '12-15', pr: 28 , restTimer: 180 },
-    { id: 4, name: 'Hamstring Curl', sets: 3, reps: '10-12', pr: 25 , restTimer: 180 },
-  ];
-
-
-
-const restTimerRef = useRef(null);
-const [currentWorkout, setCurrentWorkout] = useState(null);
-const [currentSetIndex, setCurrentSetIndex] = useState(null);
-const [enteredWeight, setEnteredWeight] = useState({});
-
-
-// Add this state
-const [showRestTimer, setShowRestTimer] = useState(false);
+  // Count total completed sets for progress
+  const totalCompleted = Object.values(completedSets).reduce((acc, sets) => {
+    return acc + Object.values(sets).filter(Boolean).length;
+  }, 0);
+  const progressPct = totalSets > 0 ? Math.round((totalCompleted / totalSets) * 100) : 0;
 
   useEffect(() => {
     const load = async () => {
-
-
       try {
         setLoading(true);
-  
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-  
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) {
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           return;
         }
-
-      
-
-
-
-      const profileData = await getProfile(session.user.id);
-
-            //Get Profile
-            setProfile(profileData);
-
-            SetProfileUnitMeasurement(profileData.unitMeasurement);
-            
-    }
-            catch (err) {
-              console.error('Home Screen load error:', err.message);
-            } finally {
-              setLoading(false);
-            }
-  
-  
-          }
-  
+        const { getProfile } = await import('../lib/GetProfile');
+        const profileData = await getProfile(session.user.id);
+        setProfile(profileData);
+        setProfileUnitMeasurement(profileData.unitMeasurement ?? 'kg');
+      } catch (err) {
+        console.error('WorkoutModeScreen load error:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
     load();
-  }, []); 
-
-  const [completedSets, setCompletedSets] = useState({});
-  const [focusedInput, setFocusedInput] = useState(null);
-
-
-
-
-  if (!profile) {
-    return (
-      <View style={styles.center}>
-          <Text style={styles.progressText}>No profile found</Text>
-      </View>
-    );
-  }
-
-  // const toggleSetCompletion = (workout, setIndex) => {
-  //   setCurrentWorkout(workout);
-  //   setCurrentSetIndex(setIndex);
-  //   setCompletedSets(prev => ({
-  //     ...prev,
-  //     [workout.id]: {
-  //       ...prev[workout.id],
-  //       [setIndex]: !prev[workout.id]?.[setIndex],
-  //     },
-  //   }));
-  
-  //   // Start rest timer when marking a set complete
-  //   if (!completedSets[workout.id]?.[setIndex]) {
-  //     restTimerRef.current?.start();
-  //   }
-  // };
-
-  // const toggleSetCompletion = (workout, setIndex) => {
-  //   setCurrentWorkout(workout);
-  //   setCurrentSetIndex(setIndex);
-  
-  //   const alreadyCompleted = completedSets[workout.id]?.[setIndex];
-  
-  //   setCompletedSets(prev => ({
-  //     ...prev,
-  //     [workout.id]: {
-  //       ...prev[workout.id],
-  //       [setIndex]: !alreadyCompleted,
-  //     },
-  //   }));
-  
-  //   if (!alreadyCompleted) {
-  //     setShowRestTimer(true);  // 👈 show it
-  //     restTimerRef.current?.start(workout.restTimer);
-  //   } else {
-  //     setShowRestTimer(false); // 👈 hide if unchecking
-  //   }
-  // };
-
+  }, []);
 
   const toggleSetCompletion = (workout, setIndex) => {
     setCurrentWorkout(workout);
     setCurrentSetIndex(setIndex);
-  
-    // Reads the CURRENT value of completedSets for this specific workout set
-    // BEFORE any state update happens.
-    // e.g. if set 1 was already ticked, this will be `true`
-    // if set 1 was never ticked, this will be `undefined` (falsy)
-    // We capture it here because once setCompletedSets runs below,
-    // the state updates and we lose the original value
     const alreadyCompleted = completedSets[workout.id]?.[setIndex];
-  
     setCompletedSets(prev => ({
       ...prev,
-      [workout.id]: {
-        ...prev[workout.id],
-        // Uses the captured alreadyCompleted value to toggle
-        // if it was true  → sets to false (untick)
-        // if it was false/undefined → sets to true (tick)
-        [setIndex]: !alreadyCompleted,
-      },
+      [workout.id]: { ...prev[workout.id], [setIndex]: !alreadyCompleted },
     }));
-  
-    // Because we captured alreadyCompleted BEFORE the state update:
-    // if it was false/undefined → user is COMPLETING a set → start timer
-    // if it was true → user is UN-COMPLETING a set → hide timer
     if (!alreadyCompleted) {
-      // Force unmount the RestTimer component so it resets fully
-      // This handles the case where a previous timer is already running
       setShowRestTimer(false);
-  
       setTimeout(() => {
-        // Remount it fresh after 50ms so the ref and state are clean
-        // Then immediately start counting down with this workout's rest duration
         setShowRestTimer(true);
         restTimerRef.current?.start(workout.restTimer);
       }, 50);
     } else {
-      // User unticked a completed set, so hide the timer entirely
       setShowRestTimer(false);
     }
   };
-  return (
 
+  const toggleWorkoutComplete = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const userId = session.user.id;
+
+      const completedEntries = [];
+      workouts.forEach((workout) => {
+        const setsForWorkout = completedSets[workout.id] ?? {};
+        Object.entries(setsForWorkout).forEach(([setIndex, isDone]) => {
+          if (!isDone) return;
+          const key = `${workout.id}-${setIndex}`;
+          completedEntries.push({
+            workout, setIndex: parseInt(setIndex),
+            weight: parseFloat(enteredWeight[key]) || 0,
+            reps: parseFloat(enteredReps[key]) || 0,
+          });
+        });
+      });
+
+      const bestPerExercise = {};
+      completedEntries.forEach(({ workout, weight, reps }) => {
+        const prev = bestPerExercise[workout.name];
+        const score = weight * reps;
+        if (!prev || score > prev.score) {
+          bestPerExercise[workout.name] = { workout, weight, reps, score };
+        }
+      });
+
+      const exerciseNames = Object.keys(bestPerExercise);
+      const { data: existingPRs, error: prFetchError } = await supabase
+        .from('personal_records')
+        .select('exercise_name, weight, reps')
+        .eq('user_id', userId)
+        .in('exercise_name', exerciseNames);
+      if (prFetchError) throw prFetchError;
+
+      const prMap = {};
+      (existingPRs ?? []).forEach((pr) => { prMap[pr.exercise_name] = pr; });
+
+      const detectedNewPRs = [];
+      for (const [name, best] of Object.entries(bestPerExercise)) {
+        const existing = prMap[name];
+        const isNewPR = !existing ||
+          (best.weight > existing.weight && best.reps >= existing.reps) ||
+          (best.reps > existing.reps && best.weight >= existing.weight);
+        if (isNewPR) detectedNewPRs.push({ exercise_name: name, weight: best.weight, reps: best.reps });
+      }
+
+      const summary = workouts.map((workout) => {
+        const setsData = Object.entries(completedSets[workout.id] ?? {})
+          .filter(([, done]) => done)
+          .map(([setIndex]) => {
+            const key = `${workout.id}-${setIndex}`;
+            return { setNumber: parseInt(setIndex) + 1, weight: parseFloat(enteredWeight[key]) || 0, reps: parseFloat(enteredReps[key]) || 0 };
+          });
+        const isNewPR = detectedNewPRs.some((p) => p.exercise_name === workout.name);
+        return { workout, setsData, isNewPR };
+      });
+
+      setSummaryData(summary);
+      setNewPRs(detectedNewPRs);
+      setShowSummaryModal(true);
+    } catch (err) {
+      console.error('toggleWorkoutComplete error:', err.message);
+    }
+  };
+
+  const submitWorkout = async () => {
+    try {
+      setIsSaving(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const userId = session.user.id;
+
+      const logRows = [];
+      workouts.forEach((workout) => {
+        const setsForWorkout = completedSets[workout.id] ?? {};
+        Object.entries(setsForWorkout).forEach(([setIndex, isDone]) => {
+          if (!isDone) return;
+          const key = `${workout.id}-${setIndex}`;
+          logRows.push({
+            user_id: userId, exercise_name: workout.name,
+            sets: parseInt(setIndex) + 1,
+            reps: parseFloat(enteredReps[key]) || 0,
+            weight: parseFloat(enteredWeight[key]) || 0,
+          });
+        });
+      });
+
+      if (logRows.length > 0) {
+        const { error: logError } = await supabase.from('exercise_logs').insert(logRows);
+        if (logError) throw logError;
+      }
+
+      for (const pr of newPRs) {
+        const matchedWorkout = workouts.find(w => w.name === pr.exercise_name);
+        const { error: prError } = await supabase.from('personal_records').upsert(
+          { user_id: userId, exerciseID: matchedWorkout?.id, exercise_name: pr.exercise_name, weight: pr.weight, reps: pr.reps },
+          { onConflict: 'user_id, exercise_name' }
+        );
+        if (prError) throw prError;
+      }
+
+      setShowSummaryModal(false);
+
+
+      // Reward functionality & Update Users Stats/Records 
+
+      setDefaultXPRewardAmount(100);
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    } catch (err) {
+      console.error('submitWorkout error:', err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!profile) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={ACCENT} />
+      </View>
+    );
+  }
+
+  return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
-      {/* Natural Gradient Background */}
-      <LinearGradient
-        colors={['#1e3a8a', '#0f766e', '#065f46']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientBackground}
+
+      {/* Blobs */}
+      <View style={styles.blobTopRight} />
+      <View style={styles.blobBottomLeft} />
+
+      {/* ── Top bar: timer + rest timer ── */}
+      <View style={styles.topBar}>
+        <View style={styles.timerPill}>
+          <Ionicons name="time-outline" size={14} color={ACCENT} />
+          <Timer />
+        </View>
+
+        {showRestTimer && (
+          <View style={styles.restPill}>
+            <RestTimer
+              ref={restTimerRef}
+              workoutId={currentWorkout?.id}
+              setIndex={currentSetIndex}
+              weightLifted={enteredWeight}
+              currentPR={currentWorkout?.pr}
+              onTimerComplete={() => setShowRestTimer(false)}
+            />
+          </View>
+        )}
+      </View>
+
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.iconRing}>
+            <Ionicons name="barbell-outline" size={20} color={ACCENT} />
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>{workoutName ?? 'Workout'}</Text>
+            <Text style={styles.headerSubtitle}>
+              {workouts.length} exercise{workouts.length !== 1 ? 's' : ''} · {totalSets} sets
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* ── Progress bar ── */}
+      <View style={styles.progressSection}>
+        <View style={styles.progressLabelRow}>
+          <Text style={styles.progressLabel}>Progress</Text>
+          <Text style={styles.progressPct}>{progressPct}%</Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+        </View>
+      </View>
+
+      {/* ── Exercise list ── */}
+      <ScrollView
+        style={styles.workoutList}
+        contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 18 }}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.timerContentCard}>
+        {workouts.length === 0 && (
+          <Text style={styles.emptyText}>No exercises found for this workout.</Text>
+        )}
 
-        <View style={styles.workoutCard}>
-          
-           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.headerTextContainer}>
+        {workouts.map((workout) => (
+          <View key={workout.id} style={styles.workoutCard}>
 
-
-{/* Workout Timer */}
-                <Timer></Timer>
+            {/* Exercise header */}
+            <View style={styles.exerciseHeader}>
+              <Text style={styles.workoutName}>{workout.name}</Text>
+              <View style={styles.repsBadge}>
+                <Text style={styles.repsBadgeText}>{workout.sets} Sets : {workout.reps} Reps</Text>
               </View>
             </View>
-      
-            {showRestTimer && (
-              <View style={styles.progressContainer}>
-               <RestTimer
-                  ref={restTimerRef}
-                  workoutId={currentWorkout?.id}
-                  setIndex={currentSetIndex}
-                  weightLifted={enteredWeight}
-                  currentPR={currentWorkout?.pr}
-                  onTimerComplete={() => {
-                    setShowRestTimer(false); // 👈 hide when done
-                    console.log('Rest complete!');
-                  }}
-                />
+
+            {workout.pr != null && (
+              <View style={styles.prRow}>
+                <Ionicons name="trophy-outline" size={13} color="#FFA940" />
+                <Text style={styles.prText}>PR — {workout.pr} {profileUnitMeasurement}</Text>
               </View>
             )}
 
-            
-          </View>
-       </View>
-    </View>
-
-        {/* Main Content */}
-        <View style={styles.mainContent}>
-          
-          {/* Workout Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Ionicons name="barbell-outline" size={28} color="#10b981" />
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.headerTitle}>Leg Day</Text>
-                <Text style={styles.headerSubtitle}>4 exercises • 13 sets</Text>
-              </View>
+            {/* Set rows */}
+            <View style={styles.setHeaderRow}>
+     
+              <Text style={styles.setHeaderCell}>REPS</Text>
+              <Text style={styles.setHeaderCell}>WEIGHT</Text>
+              <Text style={[styles.setHeaderCell, { textAlign: 'right' }]}>DONE</Text>
             </View>
-            <View style={styles.progressContainer}>
-              <Text style={styles.progressText}>
-              <Ionicons name="add-outline" size={20} color="#10b981" />
-              </Text>
-            </View>
+
+            {Array.from({ length: workout.sets }).map((_, index) => {
+              const done = completedSets[workout.id]?.[index];
+              return (
+                <View
+                  key={index}
+                  style={[styles.setRow, done && styles.setRowCompleted]}
+                >
+                  <Text style={[styles.setLabel, done && styles.setLabelDone]}>{index + 1}</Text>
+
+                  <View style={[
+                    styles.inputWrap,
+                    focusedInput === `${workout.id}-${index}-reps` && styles.inputWrapFocused,
+                  ]}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Reps"
+                      placeholderTextColor="#4a4a5a"
+                      keyboardType="numeric"
+                      onFocus={() => setFocusedInput(`${workout.id}-${index}-reps`)}
+                      onBlur={() => setFocusedInput(null)}
+                      onChangeText={(val) =>
+                        setEnteredReps(prev => ({ ...prev, [`${workout.id}-${index}`]: val }))
+                      }
+                    />
+                  </View>
+
+                  <View style={[
+                    styles.inputWrap,
+                    focusedInput === `${workout.id}-${index}-weight` && styles.inputWrapFocused,
+                  ]}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={profileUnitMeasurement}
+                      placeholderTextColor="#4a4a5a"
+                      keyboardType="numeric"
+                      onFocus={() => setFocusedInput(`${workout.id}-${index}-weight`)}
+                      onBlur={() => setFocusedInput(null)}
+                      onChangeText={(val) =>
+                        setEnteredWeight(prev => ({ ...prev, [`${workout.id}-${index}`]: val }))
+                      }
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.checkBtn}
+                    onPress={() => toggleSetCompletion(workout, index)}
+                  >
+                    <Ionicons
+                      name={done ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                      size={28}
+                      color={done ? ACCENT : '#42425A'}
+                    />
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
-    
-          {/* Workout List */}
-          <ScrollView style={styles.workoutList} showsVerticalScrollIndicator={false}>
-            {workouts.map((workout) => (
-              <View key={workout.id} style={styles.workoutCard}>
-                
-                {/* Workout Header */}
-                <View style={styles.workoutDetailsContainer}>
-                  <Text style={styles.workoutName}>{workout.name}</Text>
-                  <Text style={styles.workoutDetails}>Personal Record - {workout.pr} {profileUnitMeasurement}</Text>
-                  <Text style={styles.workoutDetails}>{workout.sets} Sets • {workout.reps} Reps</Text>
+        ))}
+      </ScrollView>
+
+      {/* ── Finish button ── */}
+      <View style={styles.finishWrapper}>
+        <TouchableOpacity style={styles.finishButton} onPress={toggleWorkoutComplete} activeOpacity={0.85}>
+          <Ionicons name="checkmark-done-outline" size={20} color="#0E0E12" />
+          <Text style={styles.finishButtonText}>FINISH WORKOUT</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Summary Modal ── */}
+      <Modal
+        visible={showSummaryModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowSummaryModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+
+            {/* Modal header */}
+            <View style={styles.modalHeader}>
+              <View>
+                <View style={styles.modalBadge}>
+                  <Text style={styles.modalBadgeText}>WORKOUT COMPLETE</Text>
                 </View>
-
-                {/* Sets */}
-                <View style={styles.workoutDetailsContainer}>
-                  {Array.from({ length: workout.sets }).map((_, index) => (
-                    <View 
-                      key={index} 
-                      style={[
-                        styles.setRow,
-                        completedSets[workout.id]?.[index] && styles.setRowCompleted
-                      ]}
-                    >
-                      <Text style={styles.setLabel}>{index + 1}</Text>
-                      
-                      <View style={[
-                        styles.inputContainer,
-                        focusedInput === `${workout.id}-${index}-reps` && styles.inputContainerFocused,
-                      ]}>
-                        <TextInput 
-                          style={styles.input} 
-                          placeholder="Reps" 
-                          placeholderTextColor="#6B7280"
-                          keyboardType="numeric"
-                          onFocus={() => setFocusedInput(`${workout.id}-${index}-reps`)}
-                          onBlur={() => setFocusedInput(null)}
-                        />
-                      </View>
-
-                      <View style={[
-                        styles.inputContainer,
-                        focusedInput === `${workout.id}-${index}-weight` && styles.inputContainerFocused,
-                      ]}>
-                        <TextInput 
-                          style={styles.input} 
-                          placeholder="Weight" 
-                          placeholderTextColor="#6B7280"
-                          keyboardType="numeric"
-                          onFocus={() => setFocusedInput(`${workout.id}-${index}-weight`)}
-                          onBlur={() => setFocusedInput(null)}
-                        />
-                      </View>
-
-                      <TouchableOpacity
-                        style={styles.completeButton}
-                        onPress={() => toggleSetCompletion(workout, index)}
-                      >
-                        <Ionicons
-                          name={completedSets[workout.id]?.[index] ? "checkmark-circle" : "checkmark-circle-outline"}
-                          size={28}
-                          color={completedSets[workout.id]?.[index] ? "#10b981" : "#6B7280"}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
+                <Text style={styles.modalTitle}>Great work!</Text>
+                <Text style={styles.modalSubtitle}>{workoutName}</Text>
               </View>
-            ))}
-          </ScrollView>
-
-
-        {/* Finish button */}
-          <View style={{ padding: 12 }}>
-            <TouchableOpacity>
-            <LinearGradient
-               colors={['#10b981', '#059669']}
-               start={{ x: 0, y: 0 }}
-               end={{ x: 1, y: 0 }}
-               style={styles.finishButton}
-            >
-                <Ionicons name="checkmark-done-outline" size={22} color="#fff" />
-                <Text style={styles.finishButtonText}>Finish Workout</Text>
-          
-              </LinearGradient>
+              <TouchableOpacity onPress={() => setShowSummaryModal(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={18} color="#A0A0BC" />
               </TouchableOpacity>
             </View>
-        
 
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+
+              {newPRs.length > 0 && (
+                <View style={styles.prBanner}>
+                  <Ionicons name="trophy-outline" size={18} color="#FFA940" />
+                  <Text style={styles.prBannerText}>
+                    {newPRs.length} New PR{newPRs.length > 1 ? 's' : ''} set!
+                  </Text>
+                </View>
+              )}
+
+              {summaryData.map(({ workout, setsData, isNewPR }) => (
+                <View key={workout.id} style={styles.summaryCard}>
+                  <View style={styles.summaryCardHeader}>
+                    <Text style={styles.summaryExerciseName}>{workout.name}</Text>
+                    {isNewPR && (
+                      <View style={styles.prBadge}>
+                        <Ionicons name="trophy-outline" size={11} color="#FFA940" />
+                        <Text style={styles.prBadgeText}>New PR</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.summarySetHeaderRow}>
+                    <Text style={styles.summarySetHeaderText}>SET</Text>
+                    <Text style={styles.summarySetHeaderText}>REPS</Text>
+                    <Text style={styles.summarySetHeaderText}>WEIGHT</Text>
+                  </View>
+
+                  {setsData.length === 0 ? (
+                    <Text style={styles.skippedText}>No sets completed</Text>
+                  ) : (
+                    setsData.map((s) => (
+                      <View key={s.setNumber} style={styles.summarySetRow}>
+                        <Text style={styles.summarySetCell}>{s.setNumber}</Text>
+                        <Text style={styles.summarySetCell}>{s.reps}</Text>
+                        <Text style={styles.summarySetCell}>{s.weight} {profileUnitMeasurement}</Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              ))}
+
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.modalSubmitButton, isSaving && { opacity: 0.6 }]}
+                onPress={submitWorkout}
+                disabled={isSaving}
+                activeOpacity={0.85}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color="#0E0E12" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-done-outline" size={18} color="#0E0E12" />
+                    <Text style={styles.modalSubmitText}>SAVE & FINISH</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+          </View>
         </View>
-  
-      </LinearGradient>
-    </View>
+      </Modal>
 
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradientBackground: {
-    flex: 1,
-  },
-  timerSection: {
-    paddingTop: 10,
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-  },
-  mainContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  timerContentCard:{
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const ACCENT   = '#C6F135';
+const BG       = '#0E0E12';
+const CARD     = '#22222E';
+const SURFACE2 = '#2C2C3C';
+const BORDER   = '#42425A';
 
-    padding:20
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  headerTextContainer: {
-    gap: 4,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  progressContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  progressText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#10b981',
-  },
-  workoutList: {
-    flex: 1,
-  },
-  workoutCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  workoutDetailsContainer: {
-    marginBottom: 12,
-  },
-  workoutName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 6,
-  },
-  workoutDetails: {
-    fontSize: 14,
-    color: '#6ee7b7',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  setRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0F172A',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  setRowCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: '#10b981',
-  },
-  setLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    width: 24,
-    textAlign: 'center',
-  },
-  inputContainer: {
-    flex: 1,
-    backgroundColor: '#1C1F26',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  inputContainerFocused: {
-    borderColor: '#10b981',
-    backgroundColor: '#0F172A',
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  input: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  completeButton: {
-    padding: 4,
-  },
-  finishButtonWrapper: {
-    paddingVertical: 16,
-  },
-  finishButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 14,
-    gap: 10,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  finishButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: BG },
+  center:    { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: BG },
+
+  blobTopRight:   { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: ACCENT, opacity: 0.05, top: -80, right: -80 },
+  blobBottomLeft: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: '#5B4FE8', opacity: 0.06, bottom: 60, left: -80 },
+
+  // Top bar
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingTop: 60, paddingBottom: 12, gap: 10 },
+  timerPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  restPill:  { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center' },
+
+  // Header
+  header:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, marginBottom: 14 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconRing:   { width: 44, height: 44, borderRadius: 13, borderWidth: 1.5, borderColor: ACCENT + '55', backgroundColor: ACCENT + '14', justifyContent: 'center', alignItems: 'center' },
+  headerTitle:    { fontSize: 22, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 13, color: '#A0A0BC', marginTop: 2 },
+
+  // Progress
+  progressSection:  { paddingHorizontal: 18, marginBottom: 16 },
+  progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  progressLabel:    { fontSize: 11, fontWeight: '700', color: '#A0A0BC', letterSpacing: 1 },
+  progressPct:      { fontSize: 11, fontWeight: '700', color: ACCENT },
+  progressTrack:    { height: 4, backgroundColor: SURFACE2, borderRadius: 2, overflow: 'hidden' },
+  progressFill:     { height: '100%', backgroundColor: ACCENT, borderRadius: 2 },
+
+  // List
+  workoutList: { flex: 1 },
+  emptyText:   { color: '#A0A0BC', textAlign: 'center', marginTop: 40, fontSize: 15 },
+
+  // Exercise card
+  workoutCard:    { backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 16, marginBottom: 14 },
+  exerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  workoutName:    { fontSize: 16, fontWeight: '800', color: '#FFFFFF', flex: 1 },
+  repsBadge:      { backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  repsBadgeText:  { color: '#DDDDF0', fontSize: 12, fontWeight: '700' },
+  prRow:  { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
+  prText: { color: '#FFA940', fontSize: 12, fontWeight: '600' },
+
+  // Set header row
+  setHeaderRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 35, marginBottom: 6 },
+  setHeaderCell: { flex: 1, fontSize: 9, fontWeight: '700', color: '#4a4a5a', letterSpacing: 1, textAlign: 'center' , paddingHorizontal:50},
+
+  // Set rows
+  setRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: SURFACE2, borderRadius: 11, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 7, borderWidth: 1, borderColor: BORDER, gap: 8 },
+  setRowCompleted: { backgroundColor: ACCENT + '14', borderColor: ACCENT + '55' },
+  setLabel:        { fontSize: 14, fontWeight: '800', color: '#A0A0BC', width: 20, textAlign: 'center' },
+  setLabelDone:    { color: ACCENT },
+  inputWrap:        { flex: 1, backgroundColor: BG, borderRadius: 8, borderWidth: 1.5, borderColor: BORDER },
+  inputWrapFocused: { borderColor: ACCENT },
+  input:            { paddingHorizontal: 8, paddingVertical: 8, fontSize: 14, color: '#FFFFFF', textAlign: 'center', fontWeight: '600' },
+  checkBtn: { padding: 2 },
+
+  // Finish
+  finishWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 18, backgroundColor: BG, borderTopWidth: 1, borderTopColor: BORDER },
+  finishButton:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT, paddingVertical: 16, borderRadius: 14, gap: 8, shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 8 },
+  finishButtonText: { color: '#0E0E12', fontSize: 14, fontWeight: '900', letterSpacing: 1.5 },
+
+  // Modal
+  modalOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  modalContainer: { backgroundColor: '#18181F', borderTopLeftRadius: 26, borderTopRightRadius: 26, maxHeight: '92%', borderWidth: 1, borderColor: BORDER },
+  modalHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 22, borderBottomWidth: 1, borderBottomColor: BORDER },
+  modalBadge:     { alignSelf: 'flex-start', backgroundColor: ACCENT + '22', borderWidth: 1, borderColor: ACCENT + '55', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
+  modalBadgeText: { color: ACCENT, fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
+  modalTitle:     { fontSize: 24, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5, marginBottom: 3 },
+  modalSubtitle:  { fontSize: 14, color: '#A0A0BC' },
+  closeBtn:       { width: 32, height: 32, borderRadius: 16, backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER, justifyContent: 'center', alignItems: 'center' },
+
+  modalScroll: { padding: 18, maxHeight: 480 },
+
+  prBanner:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFA94018', borderWidth: 1, borderColor: '#FFA94044', padding: 12, borderRadius: 12, marginBottom: 16 },
+  prBannerText: { color: '#FFA940', fontWeight: '700', fontSize: 14 },
+
+  summaryCard:       { backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER, padding: 14, marginBottom: 12 },
+  summaryCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  summaryExerciseName: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  prBadge:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFA94018', borderWidth: 1, borderColor: '#FFA94044', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  prBadgeText: { color: '#FFA940', fontSize: 11, fontWeight: '700' },
+
+  summarySetHeaderRow:  { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6, paddingHorizontal: 4 },
+  summarySetHeaderText: { flex: 1, textAlign: 'center', fontSize: 9, fontWeight: '700', color: '#4a4a5a', letterSpacing: 1 },
+  summarySetRow:  { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: SURFACE2, borderRadius: 9, paddingVertical: 9, paddingHorizontal: 4, marginBottom: 5 },
+  summarySetCell: { flex: 1, textAlign: 'center', color: '#DDDDF0', fontSize: 14, fontWeight: '600' },
+  skippedText:    { color: '#4a4a5a', fontSize: 13, textAlign: 'center', paddingVertical: 6 },
+
+  modalFooter:        { padding: 18, borderTopWidth: 1, borderTopColor: BORDER },
+  modalSubmitButton:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT, paddingVertical: 16, borderRadius: 14, gap: 8, shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8 },
+  modalSubmitText:    { color: '#0E0E12', fontSize: 14, fontWeight: '900', letterSpacing: 1.5 },
 });

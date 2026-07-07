@@ -1,27 +1,301 @@
-
-Currently working on : 
-
-Rest Timer  ; Monday 
+DEV ACCOUNT - conorhoey133@icloud.com - PEnding APProval of ID 
 
 
-BUG ATM -  Shouwing REST , When it shouldnt appear , we need the design / RestTimer to only appear when the user finishes the set 
-On Completion set , the tick is not turning Greedn
+Currently working on :  Reward System - -- Build out Reward Screen - 
 
-IF the user clicks complete RestTimer is activated. 
-    RestTimer is then set to whatever value is stored in the Workout Array objec
+HOW TO EARN - 
+SET the WORKOUT REWARD amount
+
+1. Create Columns weeklyFitBKey  ( reuse for cardio etc ) 
+2. Create Weekly Cardio , Workout Count and Daily Step count column 
+3. Weekly Goals Displayed on HomeScreen
+4. User adds activity through todays Plan Using the record activity button 
+5. Edit Record activity if incorrecly logged that week------ Home Screen has refresh activity
+
+---- TODO / Check 
+
+6. Reward System  - IF USER HITS Trackers , XP Earned  -- Working on TODAY   
+
+                - ADD a new Reward flag in DB  - isCardioRewarded
+                - ADD a new Reward flag in DB - isWorkoutsRewarded
+                - ADD a new Reward flag in DB - isDailyStepsRewarded
+
+  --  // --  i Need to consider that they can only get rewarded once so if they get 180 mins of cardio 
+            in 2 days and then log back in again it should not add more XP Rewards 
 
 
-        Once the RestTimer hits 00:00 then Rest timer disappears + User receives Mobile Notifcation / alert 
-    Check Weight if weight is GREATER than PR (within workout object) then overwrite with new value 
-    Alert User of a new PR 
+//CURRentLY AT
+Reward Success Modals - Will pass rewardNotificationType then based of that value we will use logic to say which info and XP to give 
+Sound Effect for Reward - needs to be satisfiying ---- NOt UPDATING IN DB - BUG
 
-CRUD Action  : Tuesday
+ Daily XP rewards for completing workouts 
+
+
+
+Before TestFlight / Release to App Store 
+UPDATE ENV - FILE - Encruyt - URLs adn ANON KEY , needs to be on ENV file 
+
+
+
+
+
+EMAILs - theres a Free API called Resend 
+
+
+
+2. Code Workout Complete Functionality
+3. weekly key do we update date it here? 
+
+Settings -> Set XP amount  - > Custom Xp amounts So like 20 for Cardio , 14 for workouts  . 
+
+Step count is Daily we need to check date / reset count daily  -  
+- ADD a new Reward flag in DB - isDailyStepsRewarded needs reste aswwell
+
+
+-- LEVEL System - is LEVEL 100 the max ? , if user hits 100 just keep adding XP but they go into FB Bounty Hunter level 1 -100 
+
+ -- Reward System - Science frontend information - needs done 
+-- Weight tracker - Science info / Why use average
+-------
+
+
+FORGOT PASSWORD Functionality  - DO we need emails set up  EMAILs - theres a Free API called Resend 
+Register Functionality - DO we need emails set up EMAILs - theres a Free API called Resend 
+Login in with Google , Apple   - Functionality 
+
+WeeklyKey  + weeklyCount - Used for Comparing current Amount of workouts done this week against the WorkoutGoal
+
+Workout Complete Functionality - Give User the reward and update the Users Stats
+- Check
+      WHEN UserSpecificWorkoutXPReward(DBVALUE) DOES NOT EQUAL NULL OR 0 
+      THEN ADD XP Amount to CurrentXP 
+      Update WorkoutCompleteToggle?
+   else
+      WHEN UserSpecificWorkoutXPReward EQUALS NULL OR 0 
+      GET defaultXPRewardAmount 
+
+
+Profile Screen - XP Functionality
+HomeScreen - XP Functionality
+
+
+
+HOME SCREEN - Workout out for progression charts/data 
+
+ - fetch profile
+Check WeekworkoutKey = to the current week
+Display WorkoutsCount from the DB
+- If the weeklyworkoutkey is not the current week
+update the WorkCount from the DB to 0
+
+
+----
+How to update
+ ( User Specifc -> Set up at log in -. Edit in Settings  )
+
+
+
+
+
+
+
+
+Need to set up Rewards for Workouts or Goals- -- XP redeem mode  - how do they earn 
+
+
+------ Login Documentation --- 
+HOW TO EARN - 
+SET the WORKOUT REWARD amount ( User Specifc -> Se t up at log in -. Edit in Settings? )
+WorkoutReward = userSetXPWorkoutAmount = 100 per workout complete
+Steps Count = userSetXPStepsAmount = 1000 per steps goal ( daily only )
+
+ - Default Values then in Settings we will allow them to edit RewardXPAmount  - ADD These (Add register to DB)
+ per Workout/Completing Cardio Goal / Step Goal  
+- Nutrition goals ,not sure how we track this as what if its overamount , may have a timecheck 
+if its the next day then if calories / Nutrition are on point then 100XP 
+ - Logging anything Steps ,Cardio, Workouts , Nutrition all get rewarded 10XP ( everytime)
+ - Custom Goals/Tasks, the User will assign the XP amount , by default we will suggest 10XP 
+ - 
+
+WorkoutReward = userSetXPWorkoutAmount = 100 per workout complete
+Steps Count = userSetXPStepsAmount = 1000 per steps goal ( daily only )
+
+LEVEL SYSTEM needs in Place but lets do XP first
+
+
+---- Home Screen  - Trackers --- 
+
+
+1. Create Columns weeklyFitBKey  ( reuse for cardio etc ) 
+2. Create Weekly Cardio , Workout Count and Daily Step count column in DB 
+3. Weekly Goals Displayed on HomeScreen
+4. User adds activity through Todays Plan Using the record activity button 
+5. Edit Record activity if incorrecly logged that week -> Home Screen has refresh activity so it will update 
+
+Trackers FLOW 
+App opens 
+        ↓
+Load AsyncStorage
+        ↓
+Date matches today? ──YES──→ Show current totals
+        ↓ NO
+Push totals to Supabase
+        ↓
+Reset AsyncStorage to 0 with new date
+        ↓
+weekly_workout_count updated in DB
+
+
+-----  Reward System  -------  
+
+
+--  Create a Reward  - Working
+-- Delete Reward - Working 
+--  Edit Rewards - Working 
+-- XP redeem mode  - how do they earn 
+
+--  Minimum 5 Rewards per user to store on DB -> Subscription for Unlimited or X amount\
+--  Monthly Reward List
+--  Weekly Rewards List
+Frontend and science 
+
+-- Implementing  Earn Reward based on creatia set -> either by Level or completing task ,
+ number of workouts, number of minnutes of cardio per week 
+
+
+----------- Weight Tracker ----  
+
+
+Weight Tracker  -
+Remove Mock Data 
+Where do we save the data? 
+Weekly , Monthly Graph to show average weight go down whatever 
+
+
+Science behind Reward System , A Science guy who talks about why we have a reward system . kinda like a carton
+------------------------------
+
+
+----- My HEALTH (FUTURE development)  ----------
+
+- HRV  - FUture DEV work ( like WHOOP another fitness trackers. but how can we Display it better  ) 
+
+
+---------------------------------------------
+
+
+
+----------RegisterScreen
+
+ON RegisterScreen 
+Isue at atm  LOG  User does not have macros
+ ERROR  The action 'RESET' with payload {"index":0,"routes":[{"name":"AddMacros"}]} was not handled by any navigator.
+
+This is a development-only warning and won't be shown in production.
+
+
+Register - Create Account  - Working but getting an answers error? 
+Frontend needs updated here aswell 
+  - ok so when u finish te register sign up , it reloads and stawrts drom start broke _ 
+
+Weekly Plan - Should be a view of the Week , Bullet point check off tasks / Workout cardio . Set / move stuff ( Personal Task )
+ - Golf at 8am , Go to te Gym ( 2pm ) ,
+ 
+Create Level system
+Once Level System is created - Create Reward system 
+Workout Functionality  - Now update Workout counter and add to LEVEL EXP AND Reward System 
+Once a User submits a Workout -> Level , goals , reward system progresses
+
+
+1.0 Beta
+
+Register 
+
+
+
+
+
+
+
+
+Create User Profile  - Need To Test 
+Workout mode - done
+submition - Done
+Reward System - Basic  ( Todo )
+Level system -  Basic  ( Todo )
+
+
+
+
+
+BETA - TEST 
+
+TC1 - Register a new Account 
+TC2 - Sign In 
+TC3 - Workout Mode 
+TC4 - Reward System + Level System 
+
+Forgot Password - What we want todo here
+
+     
+
+
+
+
+User logins in  // Creates record for Upper 1, 2, 3, 4 
+      // This should be done on register  / Save load time on workout
+Update Workout selection  -> Gym Session -> Select a Workout (Upper 1 or 2) ( Lower 1 or 2 )
+-> Custom ( Coming Soon Message Premium Mode)
+
+
+
+
+
+
+Cardio - lets just have a timer  - Eventually you will have  HR Rate etc 
+
+
+
+StartWorkout Functionality - This should execute on clicking what Workout you are doing 
+WorkoutCompletion Functionality
+
+
+Import template workout sessions ,
+
+custom workout session = 5 , Max 7 exercises ( free version ) , Unlimited Premium
+
+ Workout Completion  - THis needs done before we can properly test PRs as DB needed 
+
+
+
+ Rest Timer  ;  Prs Functionality - Notifcation that they beat it 
+
+Workout Completion 
+🆓 Free Version
+Use your 4 templates
+Log workouts
+Add a few custom exercises (limit e.g. 5–10)
+See latest PRs (basic)
+💎 Premium Version
+Unlimited custom exercises
+Create custom workout plans
+Full PR analytics
+📊 Data charts (your big feature)
+AI suggestions (future)
+
+
+
+CRUD Action  : 
  - Add 
  - Delete 
   - Edit / Update/  Add a new Workout exercise  not in the array ? - where do we store it then
 
 CLOSE APP - Workout is saved  - LIke Kanhunas 
-Complete Workout Functionality: Wednesday 
+
+
+Complete Workout Functionality:  
+
+
 -We save PRs to DB or asyncstorage? 
     - Modal appears 
     -  Show PRs 
@@ -32,11 +306,12 @@ Complete Workout Functionality: Wednesday
 We save PRs to DB or asyncstorage? 
 
 
-Set Rest timer (Settings)  : Thursday 
+Set Rest timer (Settings)  
 - Send Value to DB , have this beside UnitMeasurement?  - default to 2 mins 
 
 
-Reward System  : Friday 
+Reward System  :  
+
 CRUD  - Create , read , update , delete a system 
 Daily Reward Systems 
 Weekly Reward Systems 
@@ -82,6 +357,10 @@ Habit tracker - mediadation , stretching , reading
 ----- APP FLOW
 
 Register
+
+Creates record for Upper 1, 2, 3, 4 
+      // This should be done on register  / Save load time on workout mode
+      // Creates record for Upper 1, 2, 3, 4 
 Login 
 
 Set up page 

@@ -1,7 +1,9 @@
 
 Test Case  ( END to END)
 
-1. Register (PASS QA)
+Does the app work Offline - BETA Test
+
+1. Register 
     ➔ Validation
         • Check all required fields
         • Validate email format
@@ -9,24 +11,70 @@ Test Case  ( END to END)
     ➔ Success
         • Verify user is created in the database
         • Does it auto-login? → Yes
-2. Create Plan (PASS QA)
+2. Create Plan 
     ➔ User navigates to PlanYourWeekScreen
     ➔ Select gym days (validate max days limit)
     ➔ Select cardio days & enter minutes (validate total)
     ➔ Save Plan
         • Verify plan saved in AsyncStorage
         • Verify database updated
-3. Create Weekly plan (PASS QA)
+3. Create Weekly plan 
         • Verify plan saved in AsyncStorage
     ➔ Check if a new weekly entry is created for the user
     ➔ Verify timestamp and related data
 
 4. User can Logout using Settings tab button -> Logout button  (PASS QA)
 
-5. Register again using same email -> Alert - User already exists ( PASS QA )
-6. Login -> have they a Plan -> Yes -> move to Home Screen ( PASS QA )
-7. Login -> have they a Plan -> No (Create Plan or Weekly )
+5. Register again using same email -> Alert - User already exists 
+6. Login -> have they a Plan -> Yes -> move to Home Screen 
+7. Login -> have they a Plan -> No (Create Plan or Weekly ) - Test checkWeeklySetupTrigger() 
+
 8. Able to update Weekly Plan (PASS QA)
 9. Able to update Profile / UserPlan 
 10. Able to Update Macros
 11. HomeScreen stats are loaded based on DB data
+
+
+
+
+12 . Trackers 
+13 . Weight Tracker 
+14 . Reward System 
+15 . LEVEL XP System
+
+
+
+WORKOUT MODE DB setup
+
+Workout sessions templates are stored in the DB but will need to provide them using async maybe for offline
+
+workout_template table  - This is the exercises stored in DB 
+
+workout_sessions   - this is user data - for when they complete a workout session  ( keep track of x number done)
+
+- Fields :
+user_id
+template_id
+date 
+
+exercise_logs - this is individual user entered exercise day 
+
+Fields : 
+id	
+exercise_name	
+sets	
+weight	
+reps
+created_at
+
+
+personal_records - this is individual user entered PRs  
+
+Fields : 
+id	
+exercise_name	
+sets	
+weight	
+reps
+date
+created_at

@@ -24,33 +24,68 @@ export default function XPBarLevel({ currentXP = 10, levelXP = 100, level = 3 })
 
   return (
     <View style={styles.container}>
-      <Text style={styles.primaryTextColor}>
-        LEVEL {level}
+      <Text style={styles.macroLabel}>
+         LEVEL {level}
       </Text>
      
-      <Text style={styles.primaryTextColor}> {currentXP} <Text style={styles.secondaryTextColor}>/ {levelXP} XP </Text> </Text>
+      <Text style={styles.badgeText}> {currentXP} <Text style={styles.secondaryTextColor}>/ {levelXP} XP </Text> </Text>
         
      
 
       <View style={styles.barBackground}>
+
         {/* Progress fill */}
         <View style={[styles.barFillContainer, { flex: progress }]}>
           <LinearGradient
-            colors={['#FF8A00', '#FFB84D']}
+            colors={['#FF7A00', '#FFD54F']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.barFillGradient}
           />
         </View>
 
-        {/* Empty space */}
-        <View style={{ flex: 1 - progress }} />
-      </View>
+  {/* Remaining bar */}
+  <View style={[styles.remainingBar, { flex: 1 - progress }]} />
+</View>
     </View>
   );
 }
 
+
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const ACCENT    = '#C6F135';   // electric lime
+
 const styles = StyleSheet.create({
+
+    barBackground: {
+      flexDirection: 'row',
+      height: 14,
+      width: '100%',
+      backgroundColor: '#1E1E1E',
+      borderRadius: 999,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
+      marginTop:10
+    },
+  
+    barFillContainer: {
+      borderRadius: 999,
+      overflow: 'hidden',
+    },
+  
+    barFillGradient: {
+      flex: 1,
+      borderRadius: 999,
+    },
+  
+    remainingBar: {
+      backgroundColor: '#2C2C2C',
+    },
+
   container: {
     marginTop: 10,
     marginBottom: 10,
@@ -66,27 +101,12 @@ const styles = StyleSheet.create({
   xpText: {
     color: theme.textMuted,
   },
-  barBackground: {
-    flexDirection: 'row', // horizontal fill
-    height: 12,
-    width: '90%',
-    backgroundColor: theme.surface,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  barFillContainer: {
-    height: '100%',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
+ 
   boldBlackText:
   {
    color: 'black', fontSize: 16, fontWeight: '700'
   },
-  barFillGradient: {
-    flex: 1, // fill the container width
-  },
+
     subtitle: { fontSize: 14, color: theme.text, marginBottom: 22, textAlign: 'center' },
     primaryTextColor: {
       color: '#FFFFFF',
@@ -102,5 +122,28 @@ const styles = StyleSheet.create({
       fontWeight: '500',
       marginTop: 4,
     },
+    macroLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#A0A0BC',       // clear medium-grey label
+      letterSpacing: 1.2,
+      marginBottom: 4,
+    }, 
+    macroLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#ffff',       // clear medium-grey label
+      letterSpacing: 1.2,
+      marginBottom: 4,
+    }, 
+    badgeText: {
+      color: ACCENT,
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: 1.5,
+    },
+
+
+    
 
   });

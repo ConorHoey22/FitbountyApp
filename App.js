@@ -46,9 +46,9 @@ const Tab = createBottomTabNavigator();
 
 function withLayout(Component, title) {
   return (props) => (
-    <AppLayout title={title}>
+    // <AppLayout title={title}>
       <Component {...props} />
-    </AppLayout>
+    /* </AppLayout> */
   );
 }
 
@@ -56,7 +56,7 @@ function AuthStack() {
   return (
     <Stack.Navigator initialRouteName="Login">
       <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -69,38 +69,53 @@ function AppTabs() {
           let iconName;
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Workouts') iconName = focused ? 'fitness' : 'fitness-outline';
+          else if (route.name === 'Rewards') iconName = focused ? 'gift' : 'gift-outline';
           else if (route.name === 'ProfileScreen') iconName = focused ? 'person' : 'person-circle-outline';
           else if (route.name === 'PlanYourWeekScreen') iconName = focused ? 'calendar' : 'calendar-outline';
-          else if (route.name === 'SettingsScreen') iconName = focused ? 'settings' : 'settings-outline';
+
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#4CAF50',
-        tabBarInactiveTintColor: '#9CA3AF',
-
+        tabBarActiveTintColor: '#C6FF00', // lime green
+        tabBarInactiveTintColor: '#6B7280',
+        
         tabBarStyle: {
-          backgroundColor: '#121826',
+          backgroundColor: '#000000',
           borderTopWidth: 1,
-          borderTopColor: '#1F2937',
-
+          borderTopColor: '#1A1A1A',
+          height: 75,          // increase height
+          paddingBottom: 10,   // pushes content up
+          paddingTop: 8,
         },
+        
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
-
+          fontWeight: '700',
+          letterSpacing: 0.3,
+          marginBottom: 4,     // moves text upward
         },
-        headerStyle: { backgroundColor: '#121826' },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: { fontWeight: 'bold', color:'#FFFFFF' },
         
+        headerStyle: {
+          backgroundColor: '#000000',
+        },
+        
+        headerTintColor: '#C6FF00',
+        
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          color: '#FFFFFF',
+          fontSize: 20,
+        },
       })}
     >
       <Tab.Screen name="Home" component={withLayout(Home, 'Home')} options={{ headerShown: false }} />
       <Tab.Screen name="ProfileScreen" component={withLayout(ProfileScreen, 'ProfileScreen')} options={{ headerShown: false , tabBarLabel: 'Profile' }} />
+      <Tab.Screen name="Rewards" component={withLayout(RewardSystemScreen, 'Rewards')} options={{ headerShown: false , tabBarLabel: 'Rewards'}} />
       <Tab.Screen name="Workouts" component={withLayout(WorkoutsScreen, 'Workouts')} options={{ headerShown: false }} />
       <Tab.Screen name="PlanYourWeekScreen" component={withLayout(PlanYourWeekScreen, 'PlanYourWeekScreen')} options={{ headerShown: false , tabBarLabel: 'Planner'}} />
-      <Tab.Screen name="SettingsScreen" component={withLayout(SettingsScreen, 'SettingsScreen')} options={{ headerShown: false ,tabBarLabel: 'Settings' }}/>
+
       <Tab.Screen name="UpdateMacrosPlan" component={withLayout(UpdateMacrosPlan, 'UpdateMacrosPlan')} options={{ headerShown: false ,tabBarButton: () => null }} />
       <Tab.Screen name="WorkoutModeScreen" component={withLayout(WorkoutModeScreen,'WorkoutModeScreen')} options={{ headerShown:false, tabBarButton: () => null }} />
+      
     </Tab.Navigator>
   );
 }
@@ -116,15 +131,11 @@ function AppStack() {
           component={UpdateMacrosPlan}
           options={{ headerShown: false }} 
         />
-          {/* <Stack.Screen
-          name="WorkoutModeScreen"
-          component={WorkoutModeScreen}
-          options={{ headerShown: false }} 
-        /> */}
       <Stack.Screen name="PlanYourWeekScreen" component={withLayout(PlanYourWeekScreen,'PlanYourWeekScreen')} options={{ title: 'Create a Plan' }} />
       <Stack.Screen name="WeightTrackerScreen" component={withLayout(WeightTrackerScreen,'WeightTrackerScreen')} options={{ title: 'Track your Weight' }} />
 
       <Stack.Screen name="RewardSystemScreen" component={withLayout(RewardSystemScreen,'RewardSystemScreen')} options={{ title: 'Your Reward System'}} />
+      <Stack.Screen name="SettingsScreen" component={withLayout(SettingsScreen,'SettingsScreen')} options={{ title: 'Settings'}} />
     </Stack.Navigator>
   );
 }
