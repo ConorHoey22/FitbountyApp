@@ -2,7 +2,7 @@
   "expo": {
     "name": "FitBounty",
     "slug": "fitbounty",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -17,12 +17,17 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "android": {},
+    "android": {
+      "package": "com.conorh7896.fitbounty"
+    },
     "web": {},
     "extra": {
       "eas": {
         "projectId": "0d836de9-1778-4836-bbd7-74950b6c1db9"
       }
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

@@ -169,61 +169,61 @@ const [refreshKey, setRefreshKey] = useState(0);
 
       const currentWeekKey = getISOWeekKey(new Date());
 
-      if (profile.weeklyFitBKey === currentWeekKey) {
-        // Same week — just display the count
-        setWeeklyWorkoutCount(profile.weeklyWorkoutCount);
-        setWeeklyCardioCount(profile.weeklyCardioCount);
+      // if (profile.weeklyFitBKey === currentWeekKey) {
+      //   // Same week — just display the count
+      //   setWeeklyWorkoutCount(profile.weeklyWorkoutCount);
+      //   setWeeklyCardioCount(profile.weeklyCardioCount);
 
 
         // Check if user has reached Goal Trackers , if so XP added to user Account 
         // -- Need to consider that they can only get rewarded once so if they get 180 mins of cardio in 2 days and then log back in again it should not add more XP Rewards 
 
 
-        // Check Cardio Goal
-        if (weeklyCardioCount >= cardioGoal && !isCardioRewarded) 
-        {
-                // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
-                triggerReward('CARDIO');
-                setIsCardioRewarded(true); // Locks the reward out
+      //   // Check Cardio Goal
+      //   if (weeklyCardioCount >= cardioGoal && !isCardioRewarded) 
+      //   {
+      //           // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
+      //           triggerReward('CARDIO');
+      //           setIsCardioRewarded(true); // Locks the reward out
 
-          // TODO: Make an API/DB call here to save `isCardioRewarded: true` and add XP to user profile
-          await supabase
-          .from('userProfiles')
-              .update({isCardioRewarded : true})
-              .eq('id', session.user.id);
-
-
-           // Async Value as well just incase the user is OFFLINE
-        }
-
-        // Check Workout Goal
-        if (weeklyWorkoutCount >= workoutSessionsGoal && !isWorkoutRewarded) 
-        {
-                // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
-                triggerReward('WORKOUT');
-                setIsWorkoutRewarded(true); // Locks the reward out
-          // TODO: Make an API/DB call here to save `isWorkoutRewarded: true` and add XP to user profile
-        }
-
-        // Check Workout Goal
-        if (dailystepCount >= stepsGoal && !isDailyStepsRewarded) 
-        {
-            // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
-            triggerReward('DAILYSTEPS');
-            setIsDailyStepsRewarded(true); // Locks the reward out
-        // TODO: Make an API/DB call here to save `isWorkoutRewarded: true` and add XP to user profile
-        }
+      //     // TODO: Make an API/DB call here to save `isCardioRewarded: true` and add XP to user profile
+      //     await supabase
+      //     .from('userProfiles')
+      //         .update({isCardioRewarded : true})
+      //         .eq('id', session.user.id);
 
 
-      } else {
-        // New week — reset to 0
-        await supabase
-          .from('userProfiles')
-          .update({ weeklyCardioCount: 0,weeklyWorkoutCount: 0, weeklyFitBKey: currentWeekKey })
-          .eq('id', session.user.id);
-        setWeeklyWorkoutCount(0);
-        setWeeklyCardioCount(0);
-      }
+      //      // Async Value as well just incase the user is OFFLINE
+      //   }
+
+      //   // Check Workout Goal
+      //   if (weeklyWorkoutCount >= workoutSessionsGoal && !isWorkoutRewarded) 
+      //   {
+      //           // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
+      //           triggerReward('WORKOUT');
+      //           setIsWorkoutRewarded(true); // Locks the reward out
+      //     // TODO: Make an API/DB call here to save `isWorkoutRewarded: true` and add XP to user profile
+      //   }
+
+      //   // Check Workout Goal
+      //   if (dailystepCount >= stepsGoal && !isDailyStepsRewarded) 
+      //   {
+      //       // Notification Modal appearing showing that you have acheive it and Trigger XP reward 
+      //       triggerReward('DAILYSTEPS');
+      //       setIsDailyStepsRewarded(true); // Locks the reward out
+      //   // TODO: Make an API/DB call here to save `isWorkoutRewarded: true` and add XP to user profile
+      //   }
+
+
+      // } else {
+      //   // New week — reset to 0
+      //   await supabase
+      //     .from('userProfiles')
+      //     .update({ weeklyCardioCount: 0,weeklyWorkoutCount: 0, weeklyFitBKey: currentWeekKey })
+      //     .eq('id', session.user.id);
+      //   setWeeklyWorkoutCount(0);
+      //   setWeeklyCardioCount(0);
+      // }
     } catch (err) {
       console.error('Weekly sync error:', err.message);
     }
@@ -339,9 +339,9 @@ const [refreshKey, setRefreshKey] = useState(0);
                   </TouchableOpacity>
             </View>
 
-            <XPRewardSuccessModal
+            {/* <XPRewardSuccessModal
               profile={profile}
-             />
+             /> */}
            
 
             {/* ── Nutrition Card ── */}
@@ -564,13 +564,13 @@ const [refreshKey, setRefreshKey] = useState(0);
       />
 
 
-      <XPRewardSuccessModal
+      {/* <XPRewardSuccessModal
           profile={profile}
           rewardNotficationType={rewardNotficationType}
           onClose={() =>
             setRewardNotificationModalVisible(false)
           }
-      />
+      /> */}
            
     </View>
   );
