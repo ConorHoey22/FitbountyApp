@@ -1,6 +1,27 @@
-DEV ACCOUNT - conorhoey133@icloud.com - PEnding APProval of ID 
+DEV ACCOUNT - conorhoey133@icloud.com - Test flight Build 
 
 
+BUGS on testFlight build ( {Physical device})
+
+User is logged out after closing the app , can we save password until they use the logout Functionality
+Frontend - HomeScreen containers look too big and clustered
+
+NumberPAd , unable to enter . also button covering it , MacrosScreen , Register
+
+Bug - No Profile Found after registering on HOME screen
+
+TEXT and FONTs not clear . White background , bit bigger aswell 
+
+text Box - text "Please enter "
+
+LOgin page . need to be LOGIN and Register with google /aplle . Dont have an account  , 
+
+
+Reward system - Tyied to Workouts and LEVELS or step counts 
+
+
+
+------
 Currently working on :  Reward System - -- Build out Reward Screen - 
 
 HOW TO EARN - 
