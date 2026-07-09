@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+
+# macOS
+.DS_Store
+
+# Environment files
+.env
+.env.*
+
+# iOS
+ios/Pods/
+ios/build/
+
+# Android
+android/.gradle/
+android/build/

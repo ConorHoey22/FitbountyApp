@@ -20,6 +20,8 @@ SET the WORKOUT REWARD amount
                 - ADD a new Reward flag in DB - isWorkoutsRewarded
                 - ADD a new Reward flag in DB - isDailyStepsRewarded
 
+
+// BUG atm appearig when not reached - need CLOSE
   --  // --  i Need to consider that they can only get rewarded once so if they get 180 mins of cardio 
             in 2 days and then log back in again it should not add more XP Rewards 
 
