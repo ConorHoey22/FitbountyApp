@@ -8,6 +8,7 @@ import {
   ScrollView,
   StatusBar,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
 
@@ -33,6 +34,10 @@ const DAY_OUT = '#2C2C3C';
 const DAY_IN = '#252532';
 const BORDER = '#42425A';
 
+// How far the Done bar sits below the top of the keyboard.
+// Increase to move it down/closer to the keyboard, decrease to move it up.
+const DONE_BAR_OFFSET = 60;
+
 export default function PlanYourWeekScreen({ navigation }) {
 
   const [step, setStep] = useState(0);
@@ -42,6 +47,30 @@ export default function PlanYourWeekScreen({ navigation }) {
 
   const [selectedGymDays, setSelectedGymDays] = useState([]);
   const [cardioPlan, setCardioPlan] = useState({});
+
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates?.height ?? 0);
+      setKeyboardVisible(true);
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -77,35 +106,35 @@ export default function PlanYourWeekScreen({ navigation }) {
   };
 
   const toggleCardioDay = (day) => {
-
-    if (cardioPlan[day]) {
-
+    if (cardioPlan[day] !== undefined) {
       const newPlan = { ...cardioPlan };
-
       delete newPlan[day];
-
       setCardioPlan(newPlan);
-
     } else {
-
-      setCardioPlan({
-        ...cardioPlan,
-        [day]: 0,
-      });
+      setCardioPlan({ ...cardioPlan, [day]: '' });
     }
   };
 
   const updateCardioMinutes = (day, minutes) => {
 
+    // allow the field to be fully cleared while typing —
+    // only coerce to a number once there's actually a digit
+    if (minutes === '') {
+      setCardioPlan({ ...cardioPlan, [day]: '' });
+      return;
+    }
+
+    const parsed = parseInt(minutes, 10);
+
     setCardioPlan({
       ...cardioPlan,
-      [day]: parseInt(minutes, 10) || 0,
+      [day]: Number.isNaN(parsed) ? '' : parsed,
     });
   };
 
   const totalCardioMinutes =
     Object.values(cardioPlan)
-      .reduce((a, b) => a + b, 0);
+      .reduce((a, b) => a + (Number(b) || 0), 0);
 
   const savePlan = async () => {
 
@@ -123,10 +152,12 @@ export default function PlanYourWeekScreen({ navigation }) {
       Object.entries(cardioPlan).forEach(([day, minutes]) => {
         weeklyPlan[day] = {
           type: 'Cardio',
-          cardio: minutes,
+          cardio: Number(minutes) || 0,
         };
       });
 
+
+      // Store Weekly Plan - Which days that the user plans todo cardio or their workouts  (STORED LOCALLY)
       await AsyncStorage.setItem(
         'weeklyPlan',
         JSON.stringify(weeklyPlan)
@@ -181,6 +212,7 @@ export default function PlanYourWeekScreen({ navigation }) {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
 
           {/* Header */}
@@ -191,7 +223,7 @@ export default function PlanYourWeekScreen({ navigation }) {
             </Text>
 
             <Text style={styles.subtitle}>
-              Build your perfect fitness routine
+              Fail to Plan, Plan to Fail
             </Text>
 
             {/* Progress */}
@@ -238,15 +270,15 @@ export default function PlanYourWeekScreen({ navigation }) {
 
                 <Text style={styles.cardHeaderText}>
                   {step === 0
-                    ? `Choose ${maxGymDays} Gym Days`
-                    : `Cardio Plan`}
+                    ? `Select ${maxGymDays} Workout Days`
+                    : `Plan your Cardio Days`}
                 </Text>
               </View>
 
               {step === 1 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>
-                    {cardioGoal} MIN GOAL
+                    {cardioGoal} Minutes
                   </Text>
                 </View>
               )}
@@ -344,7 +376,7 @@ export default function PlanYourWeekScreen({ navigation }) {
 
                           <Text
                             style={[
-                              styles.dayText,
+                              styles.dayTextSmall,
                               active &&
                               styles.dayTextSelected,
                             ]}
@@ -356,18 +388,33 @@ export default function PlanYourWeekScreen({ navigation }) {
 
                       </TouchableOpacity>
 
-                      {active && (
+                      {active ? (
 
-                        <TextInput
-                          style={styles.minutesInput}
-                          placeholder="Minutes"
-                          placeholderTextColor="#7070A0"
-                          keyboardType="numeric"
-                          value={String(cardioPlan[day])}
-                          onChangeText={(val) =>
-                            updateCardioMinutes(day, val)
-                          }
-                        />
+                        <View style={styles.minutesInputWrap}>
+
+                          <TextInput
+                            style={styles.minutesInput}
+                            placeholder="0"
+                            placeholderTextColor="#ffffff"
+                            keyboardType="number-pad"
+                            value={String(cardioPlan[day])}
+                            onChangeText={(val) =>
+                              updateCardioMinutes(day, val)
+                            }
+                          />
+
+                          <Text style={styles.minutesUnit}>
+                            min
+                          </Text>
+
+                        </View>
+
+                      ) : (
+
+                        <Text style={styles.inactiveLabel}>
+                          Not scheduled
+                        </Text>
+
                       )}
 
                     </View>
@@ -381,7 +428,7 @@ export default function PlanYourWeekScreen({ navigation }) {
                   </Text>
 
                   <Text style={styles.summaryValue}>
-                    {totalCardioMinutes} / {cardioGoal} mins
+                    {totalCardioMinutes} / {cardioGoal} Minutes
                   </Text>
 
                 </View>
@@ -458,6 +505,24 @@ export default function PlanYourWeekScreen({ navigation }) {
 
       </KeyboardAvoidingView>
 
+      {/* Numeric keypad Done bar — floats above keyboard via Keyboard listener */}
+      {Platform.OS === 'ios' && keyboardVisible && step === 1 && (
+       <View
+       style={[
+         styles.accessoryBar,
+         { bottom: keyboardHeight - DONE_BAR_OFFSET },
+       ]}
+     >
+          <TouchableOpacity
+            onPress={() => Keyboard.dismiss()}
+            style={styles.accessoryDoneButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.accessoryDoneText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
     </View>
   );
 }
@@ -514,7 +579,7 @@ const styles = StyleSheet.create({
 
   subtitle: {
     fontSize: 14,
-    color: '#A0A0BC',
+    color: '#ffffff',
     marginBottom: 24,
   },
 
@@ -638,21 +703,22 @@ const styles = StyleSheet.create({
     color: '#0E0E12',
   },
 
-  // ── Cardio ─────────────────────────────
+  // ── Cardio (compact) ───────────────────
   cardioContainer: {
-    gap: 12,
+    gap: 8,
   },
 
   cardioRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: 4,
   },
 
   dayOuterSmall: {
-    width: 78,
-    height: 78,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: DAY_OUT,
     borderWidth: 1.5,
     borderColor: BORDER,
@@ -664,21 +730,50 @@ const styles = StyleSheet.create({
     backgroundColor: DAY_IN,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 10,
+  },
+
+  dayTextSmall: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+
+  minutesInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DAY_IN,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    paddingHorizontal: 12,
+    height: 44,
+    minWidth: 100,
+    justifyContent: 'flex-end',
+    gap: 6,
   },
 
   minutesInput: {
-    flex: 1,
-    marginLeft: 12,
-    backgroundColor: DAY_IN,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: BORDER,
     color: '#FFFFFF',
-    height: 56,
-    paddingHorizontal: 16,
     fontSize: 15,
     fontWeight: '700',
+    textAlign: 'right',
+    minWidth: 32,
+    padding: 0,
+  },
+
+  minutesUnit: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  inactiveLabel: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+    fontStyle: 'italic',
   },
 
   summaryCard: {
@@ -703,6 +798,34 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontSize: 22,
     fontWeight: '900',
+  },
+
+  // ── Floating Done Bar (above keyboard) ─
+  accessoryBar: {
+    position: 'absolute',
+    right: 0,
+    backgroundColor: CARD_BG,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderColor:'#C6F135',
+    borderRadius:40,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    // zIndex: 999,
+    // elevation: 999,
+  },
+
+  accessoryDoneButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+
+  accessoryDoneText: {
+    color: ACCENT,
+    fontSize: 16,
+    fontWeight: '700',
   },
 
   // ── Bottom Bar ─────────────────────────

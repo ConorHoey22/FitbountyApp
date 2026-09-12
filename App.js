@@ -76,7 +76,7 @@ function AppTabs() {
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#C6FF00', // lime green
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarInactiveTintColor: '#ffffff',
         
         tabBarStyle: {
           backgroundColor: '#000000',

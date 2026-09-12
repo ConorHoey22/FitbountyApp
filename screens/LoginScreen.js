@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -11,12 +12,15 @@ import {
   StatusBar,
   ScrollView,
   Animated,
-  Image
+  Image,
+  Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { getProfile } from '../lib/GetProfile';
 import { Ionicons } from '@expo/vector-icons';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const navigation = useNavigation();
@@ -100,6 +104,14 @@ export default function LoginScreen() {
       <View style={styles.blobTopRight} />
       <View style={styles.blobBottomLeft} />
 
+      {/* Top bar: badge + sign up link */}
+      <View style={styles.topBar}>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>BETA</Text>
+        </View>
+    
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -110,21 +122,20 @@ export default function LoginScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>BETA</Text>
-            </View>
-           
             <Image
               source={require('../lib/assets/FBLogo.png')}
               style={styles.image}
             />
-
-            <Text style={styles.subtitle}>Sign in to continue your journey</Text>
           </View>
 
           {/* Form Card */}
           <View style={styles.card}>
             {/* Email */}
+          
+ 
+            <TouchableOpacity onPress={() => navigation.navigate('Register')} disabled={loading}>
+
+        </TouchableOpacity>
             <View style={styles.fieldWrapper}>
               <Text style={styles.label}>EMAIL</Text>
               <View style={[
@@ -140,8 +151,8 @@ export default function LoginScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="you@example.com"
-                  placeholderTextColor="#4a4a5a"
+                  placeholder="Enter your email"
+                  placeholderTextColor={PLACEHOLDER}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   value={email}
@@ -170,7 +181,7 @@ export default function LoginScreen() {
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
                   placeholder="Enter your password"
-                  placeholderTextColor="#4a4a5a"
+                  placeholderTextColor={PLACEHOLDER}
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={(t) => { setPassword(t); setError(''); }}
@@ -185,7 +196,7 @@ export default function LoginScreen() {
                   <Ionicons
                     name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                     size={18}
-                    color="#4a4a5a"
+                    color={PLACEHOLDER}
                   />
                 </TouchableOpacity>
               </View>
@@ -225,29 +236,13 @@ export default function LoginScreen() {
             {/* Divider */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.subtitle}>or continue with</Text>
+              <Text style={styles.topBarLink} onPress={() => navigation.navigate('Register')}>
+                Don't have an account? <Text style={styles.footerLink} onPress={() => navigation.navigate('Register')}>Register here!</Text>
+              </Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Social Buttons */}
-            <View style={styles.socialRow}>
-              {[
-                { icon: 'logo-google', label: 'G' },
-                { icon: 'logo-apple', label: 'A' },
-              ].map(({ icon, label }) => (
-                <TouchableOpacity key={icon} style={styles.socialButton} activeOpacity={0.75}>
-                  <Ionicons name={icon} size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')} disabled={loading}>
-              <Text style={styles.footerLink}>Sign Up</Text>
-            </TouchableOpacity>
+        
           </View>
         </Animated.View>
       </ScrollView>
@@ -261,30 +256,27 @@ const SURFACE = '#18181F';
 const BORDER = '#2a2a35';
 const BORDER_FOCUS = '#C6F135';
 const BORDER_ERROR = '#FF4D6D';
+const PLACEHOLDER = '#EDEDED';
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: BG,
   },
-  header: {
-    marginBottom: 36,
-    marginTop: 10,
-  },
-  
+
   image: {
-    width: 320,
-    height: 220,
+    width: SCREEN_WIDTH * 1.2,
+    height: SCREEN_WIDTH * 1,
     resizeMode: 'contain',
     alignSelf: 'center',
-    marginBottom: 18,
   },
-  
+
   subtitle: {
     fontSize: 15,
     color: '#ffffff',
     letterSpacing: 0.2,
-    // marginTop: 10,
+    textAlign: 'center',
+    marginTop: 4,
   },
   blobTopRight: {
     position: 'absolute',
@@ -309,15 +301,31 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingVertical: 24,
   },
   container: {
     paddingHorizontal: 28,
   },
 
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: Platform.OS === 'ios' ? 54 : 24,
+  },
+  topBarLink: {
+    color: '#ffffff',
+    fontSize: 13,
+    letterSpacing: 0.2,
+  },
+
   // Header
   header: {
-    marginBottom: 36,
+    alignItems: 'center',
+    marginBottom: -SCREEN_WIDTH * 0.30,
+    marginTop: -120,
   },
   badge: {
     alignSelf: 'flex-start',
@@ -327,7 +335,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
-    marginBottom: 16,
   },
   badgeText: {
     color: ACCENT,
@@ -380,6 +387,7 @@ const styles = StyleSheet.create({
     borderColor: BORDER_ERROR,
   },
   inputIcon: {
+    color: PLACEHOLDER,
     marginRight: 10,
   },
   input: {
@@ -401,8 +409,6 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     color: ACCENT,
-    // fontSize: 13,
-    // fontWeight: '600',
     fontSize: 1,
     color: '#ffffff',
     letterSpacing: 0.2,
@@ -485,19 +491,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Footer
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 28,
-  },
-  footerText: {
-    color: '#ffffff',
-    fontSize: 14,
-  },
+  // Footer link (used inline in topBar now)
   footerLink: {
     color: ACCENT,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
 });

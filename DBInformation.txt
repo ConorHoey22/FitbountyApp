@@ -1,0 +1,14 @@
+
+------userProfile Table ------ 
+
+stepGoal : Used for Daily Step Goal , User to asked what Daily step goal but then this value enter is Multiplied by 7 with CreateUserPlan,js ( Which gives the weeklyStepCoubtAmount)
+weeklyStepCountAmount : This will be updated once the user enters the stepGoal(Daily) and then the backend will Multiply by 7 to get the WeeklyCount
+
+
+UserHasEnteredTheirProfileDataTrigger: This is a trigger IF FALSE , User is navigated to the StartJourneyScreen ( CreateUserPlan.js) , this is used to force the user to enter Profile and goals to allow the app to funcion correctly
+UserHasWeeklyPlanSetup : This is a Trigger if False , User is navigated to PlanYourWeek Screen and cannot bypass this (Force the user to Plan)
+UserHasMacros : This is a Trigger IF False , User is navigated to Macros Screen ( UpdateMacrosPlan.js )
+
+
+------------ 
+

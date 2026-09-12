@@ -1,0 +1,60 @@
+
+----- Physical Device Bugs Template ----
+
+
+Device : e.g Iphone 15 max
+Platorm: ios or android 
+Description : 
+Status:
+
+---------------------
+
+
+Device : All smaller screen mainly 
+Platorm: All 
+Description : Frontend - HomeScreen containers look too big and clustered
+Status:
+
+
+---------------------------
+
+---------------------
+
+Device : All
+Platorm: All 
+Description : User is logged out after closing the app , can we save password until they use the logout Functionality
+Status:
+
+---------------------------
+
+Device : All
+Platorm: All 
+Description : NumberPad , unable to enter . also button covering it , MacrosScreen , Register
+Status: Update Register , Plan Week 
+
+----
+
+------------------------------- 
+Device : All
+Platorm: All
+Description: TEXT and FONTs not clear . White background , bit bigger aswell 
+Status: Update Register , Plan Week 
+----------------------------------- 
+
+------------------------------------------ 
+Device : All
+Platorm: All
+Description: Text Box Placeholder - Update Font color and size if needed
+Status: Update Register , Plan Week a
+
+------------------------------------- 
+
+
+----------------------------------- 
+Device : All
+Platorm: All
+Description:  Update  Dont have an account  - move it to the middle not the bottom on screen .
+need to say or Login and Register with Google/Apple .
+Status: 
+
+----------------------------------- 

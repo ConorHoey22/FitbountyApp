@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
@@ -20,6 +19,9 @@ import { supabase } from '../lib/supabase';
 export default function UpdateMacrosPlan() {
   const navigation = useNavigation();
   const [step, setStep] = useState(0);
+
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const [answers, setAnswers] = useState({
     calories: '',
@@ -30,10 +32,10 @@ export default function UpdateMacrosPlan() {
 
   const questions = [
     { key: 'healthWarning', label: 'What are Macros', type: 'info' },
-    { key: 'calories', label: 'Set your Calories intake', required: true, type: 'text', icon: 'flame-outline', color: '#f59e0b' },
-    { key: 'protein', label: 'Set your Protein intake', required: true, type: 'text', icon: 'fish-outline', color: '#10b981' },
-    { key: 'carbohydrates', label: 'Set your Carbohydrates intake', required: true, type: 'text', icon: 'nutrition-outline', color: '#14b8a6' },
-    { key: 'fats', label: 'Set your Fats intake', required: true, type: 'text', icon: 'water-outline', color: '#3b82f6' },
+    { key: 'calories', label: 'Set your Calories intake', required: true, type: 'text', icon: 'flame-outline' },
+    { key: 'protein', label: 'Set your Protein intake', required: true, type: 'text', icon: 'fish-outline' },
+    { key: 'carbohydrates', label: 'Set your Carbohydrates intake', required: true, type: 'text', icon: 'nutrition-outline' },
+    { key: 'fats', label: 'Set your Fats intake', required: true, type: 'text', icon: 'water-outline' },
   ];
 
   const [validationError, setValidationError] = useState('');
@@ -51,7 +53,6 @@ export default function UpdateMacrosPlan() {
       }
     }
 
-    // clear error if valid
     setValidationError('');
 
     if (step < questions.length - 1) {
@@ -111,248 +112,238 @@ export default function UpdateMacrosPlan() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
-      {/* Natural Gradient Background */}
-      <LinearGradient
-        colors={['#1e3a8a', '#0f766e', '#065f46']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientBackground}
+
+      {/* Background blobs — matches Home screen */}
+      <View style={styles.blobTopRight} />
+      <View style={styles.blobBottomLeft} />
+
+      <KeyboardAvoidingView 
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <KeyboardAvoidingView 
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.content}>
-              
-              {/* Progress Bar */}
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: `${((step + 1) / questions.length) * 100}%` }]} />
-                </View>
-                <Text style={styles.progressText}>
-                  Step {step + 1} of {questions.length}
-                </Text>
+          <View style={styles.content}>
+
+            {/* Progress Bar */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${((step + 1) / questions.length) * 100}%` }]} />
               </View>
-
-              {/* Card Container */}
-              <LinearGradient
-                colors={['#1E293B', '#1E293B']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cardOuter}
-              >
-                <LinearGradient
-                  colors={['#0F172A', '#0F172A']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.cardInner}
-                >
-                  {/* Icon */}
-                  {currentQ.icon && (
-                    <View style={[styles.iconContainer, { backgroundColor: currentQ.color + '20' }]}>
-                      <Ionicons name={currentQ.icon} size={40} color={currentQ.color} />
-                    </View>
-                  )}
-
-                  {/* Question */}
-                  <Text style={styles.question}>{currentQ.label}</Text>
-
-                  {/* Health Warning */}
-                  {currentQ.key === 'healthWarning' && (
-                    <View style={styles.infoContainer}>
-                      <View style={styles.warningBox}>
-                        <Ionicons name="warning-outline" size={24} color="#ef4444" />
-                        <Text style={styles.healthWarningText}>
-                          Before setting your Macros, we recommend that you contact your Doctor for advice or speak to a Professional.
-                        </Text>
-                      </View>
-                      
-                      <View style={styles.infoBox}>
-                        <Ionicons name="information-circle-outline" size={24} color="#10b981" />
-                        <Text style={styles.infoText}>
-                          Macros (macronutrients) are protein, carbohydrates, and fats - the building blocks of your nutrition plan.
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Calories Input */}
-                  {currentQ.key === 'calories' && (
-                    <View style={styles.inputSection}>
-                      <View style={styles.descriptionBox}>
-                        <Text style={styles.descriptionText}>
-                          Calories are units of energy that fuel your body and affect weight change.
-                        </Text>
-                      </View>
-
-                      <View style={styles.tipBox}>
-                        <Ionicons name="bulb-outline" size={18} color="#f59e0b" />
-                        <Text style={styles.tipText}>
-                          Tip: Research Calorie Deficit or Surplus
-                        </Text>
-                      </View>
-
-                      <View style={styles.inputWrapper}>
-                        <Ionicons name="flame-outline" size={20} color="#f59e0b" style={styles.inputIcon} />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Enter calories (e.g. 2000)"
-                          placeholderTextColor="#6B7280"
-                          keyboardType="decimal-pad"
-                          value={answers.calories}
-                          onChangeText={(val) => {
-                            const numeric = val
-                              .replace(/[^0-9.]/g, '')
-                              .replace(/(\..*)\./g, '$1');
-                            handleChange('calories', numeric);
-                          }}
-                        />
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Protein Input */}
-                  {currentQ.key === 'protein' && (
-                    <View style={styles.inputSection}>
-                      <View style={styles.descriptionBox}>
-                        <Text style={styles.descriptionText}>
-                          Protein builds and repairs muscle, helping you get stronger and recover faster.
-                        </Text>
-                      </View>
-
-                      <View style={styles.inputWrapper}>
-                        <Ionicons name="fish-outline" size={20} color="#10b981" style={styles.inputIcon} />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Enter protein in grams (e.g. 150)"
-                          placeholderTextColor="#6B7280"
-                          keyboardType="decimal-pad"
-                          value={answers.protein}
-                          onChangeText={(val) => {
-                            const numeric = val
-                              .replace(/[^0-9.]/g, '')
-                              .replace(/(\..*)\./g, '$1');
-                            handleChange('protein', numeric);
-                          }}
-                        />
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Carbohydrates Input */}
-                  {currentQ.key === 'carbohydrates' && (
-                    <View style={styles.inputSection}>
-                      <View style={styles.descriptionBox}>
-                        <Text style={styles.descriptionText}>
-                          Carbohydrates provide energy for workouts and daily activity, fueling performance and recovery.
-                        </Text>
-                      </View>
-
-                      <View style={styles.inputWrapper}>
-                        <Ionicons name="nutrition-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Enter carbs in grams (e.g 200)"
-                          placeholderTextColor="#6B7280"
-                          keyboardType="decimal-pad"
-                          value={answers.carbohydrates}
-                          onChangeText={(val) => {
-                            const numeric = val
-                              .replace(/[^0-9.]/g, '')
-                              .replace(/(\..*)\./g, '$1');
-                            handleChange('carbohydrates', numeric);
-                          }}
-                        />
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Fats Input */}
-                  {currentQ.key === 'fats' && (
-                    <View style={styles.inputSection}>
-                      <View style={styles.descriptionBox}>
-                        <Text style={styles.descriptionText}>
-                          Support hormones, brain function, joint health, and help absorb vitamins.
-                        </Text>
-                      </View>
-
-                      <View style={styles.inputWrapper}>
-                        <Ionicons name="water-outline" size={20} color="#3b82f6" style={styles.inputIcon} />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Enter fats in grams (e.g. 60)"
-                          placeholderTextColor="#6B7280"
-                          keyboardType="decimal-pad"
-                          value={answers.fats}
-                          onChangeText={(val) => {
-                            const numeric = val
-                              .replace(/[^0-9.]/g, '')
-                              .replace(/(\..*)\./g, '$1');
-                            handleChange('fats', numeric);
-                          }}
-                        />
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Validation Error */}
-                  {validationError ? (
-                    <View style={styles.errorContainer}>
-                      <Ionicons name="alert-circle-outline" size={18} color="#ef4444" />
-                      <Text style={styles.errorText}>{validationError}</Text>
-                    </View>
-                  ) : null}
-
-                  {/* Buttons */}
-                  <View style={styles.buttonContainer}>
-                    {step > 0 && (
-                      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                        <Ionicons name="arrow-back-outline" size={20} color="#FFFFFF" />
-                        <Text style={styles.backButtonText}>Back</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <TouchableOpacity 
-                      style={[styles.nextButton, step === 0 && styles.nextButtonFull]} 
-                      onPress={handleNext}
-                    >
-                      <LinearGradient
-                        colors={['#10b981', '#059669']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.nextButtonGradient}
-                      >
-                        <Text style={styles.nextButtonText}>
-                          {step === questions.length - 1 ? 'Finish' : 'Next'}
-                        </Text>
-                        <Ionicons name="arrow-forward-outline" size={20} color="#FFFFFF" />
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-
-                </LinearGradient>
-              </LinearGradient>
-
+              <Text style={styles.progressText}>
+                Step {step + 1} of {questions.length}
+              </Text>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </LinearGradient>
+
+            {/* Card Container */}
+            <View style={styles.cardOuter}>
+              <View style={styles.cardInner}>
+
+                {/* Icon */}
+                {currentQ.icon && (
+                  <View style={styles.iconContainer}>
+                    <Ionicons name={currentQ.icon} size={36} color={ACCENT} />
+                  </View>
+                )}
+
+                {/* Question */}
+                <Text style={styles.question}>{currentQ.label}</Text>
+
+                {/* Health Warning */}
+                {currentQ.key === 'healthWarning' && (
+                  <View style={styles.infoContainer}>
+                    <View style={styles.warningBox}>
+                      <Ionicons name="warning-outline" size={22} color="#ef4444" />
+                      <Text style={styles.healthWarningText}>
+                        Before setting your Macros, we recommend that you contact your Doctor for advice or speak to a Professional.
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.infoBox}>
+                      <Ionicons name="information-circle-outline" size={22} color={ACCENT} />
+                      <Text style={styles.infoText}>
+                        Macros (macronutrients) are protein, carbohydrates, and fats - the building blocks of your nutrition plan.
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Calories Input */}
+                {currentQ.key === 'calories' && (
+                  <View style={styles.inputSection}>
+                    <View style={styles.descriptionBox}>
+                      <Text style={styles.descriptionText}>
+                        Calories are units of energy that fuel your body and affect weight change.
+                      </Text>
+                    </View>
+
+                    <View style={styles.tipBox}>
+                      <Ionicons name="bulb-outline" size={16} color={ACCENT} />
+                      <Text style={styles.tipText}>
+                        Tip: Research Calorie Deficit or Surplus
+                      </Text>
+                    </View>
+
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="flame-outline" size={20} color={ACCENT} style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter here .. "
+                        placeholderTextColor="#ffffff"
+                        keyboardType="decimal-pad"
+                        value={answers.calories}
+                        onChangeText={(val) => {
+                          const numeric = val
+                            .replace(/[^0-9.]/g, '')
+                            .replace(/(\..*)\./g, '$1');
+                          handleChange('calories', numeric);
+                        }}
+                      />
+                      <Text style={styles.inputUnit}>kcal</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Protein Input */}
+                {currentQ.key === 'protein' && (
+                  <View style={styles.inputSection}>
+                    <View style={styles.descriptionBox}>
+                      <Text style={styles.descriptionText}>
+                        Protein builds and repairs muscle, helping you get stronger and recover faster.
+                      </Text>
+                    </View>
+
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="fish-outline" size={20} color={ACCENT} style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter here ... "
+                        placeholderTextColor="#ffffff"
+                        keyboardType="decimal-pad"
+                        value={answers.protein}
+                        onChangeText={(val) => {
+                          const numeric = val
+                            .replace(/[^0-9.]/g, '')
+                            .replace(/(\..*)\./g, '$1');
+                          handleChange('protein', numeric);
+                        }}
+                      />
+                      <Text style={styles.inputUnit}>grams</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Carbohydrates Input */}
+                {currentQ.key === 'carbohydrates' && (
+                  <View style={styles.inputSection}>
+                    <View style={styles.descriptionBox}>
+                      <Text style={styles.descriptionText}>
+                        Carbohydrates provide energy for workouts and daily activity, fueling performance and recovery.
+                      </Text>
+                    </View>
+
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="nutrition-outline" size={20} color={ACCENT} style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter here .. "
+                        placeholderTextColor="#ffffff"
+                        keyboardType="decimal-pad"
+                        value={answers.carbohydrates}
+                        onChangeText={(val) => {
+                          const numeric = val
+                            .replace(/[^0-9.]/g, '')
+                            .replace(/(\..*)\./g, '$1');
+                          handleChange('carbohydrates', numeric);
+                        }}
+                      />
+                      <Text style={styles.inputUnit}>grams</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Fats Input */}
+                {currentQ.key === 'fats' && (
+                  <View style={styles.inputSection}>
+                    <View style={styles.descriptionBox}>
+                      <Text style={styles.descriptionText}>
+                        Support hormones, brain function, joint health, and help absorb vitamins.
+                      </Text>
+                    </View>
+
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="water-outline" size={20} color={ACCENT} style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter here .."
+                        placeholderTextColor="#ffffff"
+                        keyboardType="decimal-pad"
+                        value={answers.fats}
+                        onChangeText={(val) => {
+                          const numeric = val
+                            .replace(/[^0-9.]/g, '')
+                            .replace(/(\..*)\./g, '$1');
+                          handleChange('fats', numeric);
+                        }}
+                      />
+                      <Text style={styles.inputUnit}>grams</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Validation Error */}
+                {validationError ? (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle-outline" size={18} color="#ef4444" />
+                    <Text style={styles.errorText}>{validationError}</Text>
+                  </View>
+                ) : null}
+
+                {/* Buttons */}
+                <View style={styles.buttonContainer}>
+                  {step > 0 && (
+                    <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
+                      <Ionicons name="arrow-back-outline" size={20} color={ACCENT} />
+                      <Text style={styles.backButtonText}>Back</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity 
+                    style={[styles.nextButton, step === 0 && styles.nextButtonFull]} 
+                    onPress={handleNext}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.nextButtonText}>
+                      {step === questions.length - 1 ? 'Finish' : 'Next'}
+                    </Text>
+                    <Ionicons name={step === questions.length - 1 ? 'checkmark-outline' : 'arrow-forward-outline'} size={20} color="#0E0E12" />
+                  </TouchableOpacity>
+                </View>
+
+              </View>
+            </View>
+
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
+// ─── Palette — matches Home screen ──────────────────────────────
+const ACCENT    = '#C6F135';   // electric lime
+const BG        = '#0E0E12';   // page background
+const CARD_BG   = '#22222E';   // outer card
+const INPUT_BG  = '#252532';   // input / inner surface
+const BORDER    = '#42425A';   // brighter border for visibility
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  gradientBackground: {
-    flex: 1,
+    backgroundColor: BG,
   },
   keyboardView: {
     flex: 1,
@@ -367,125 +358,159 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+
+  // Blobs — matches Home
+  blobTopRight: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: ACCENT,
+    opacity: 0.05,
+    top: -80,
+    right: -80,
+  },
+  blobBottomLeft: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#5B4FE8',
+    opacity: 0.06,
+    bottom: 60,
+    left: -80,
+  },
+
   progressContainer: {
     marginBottom: 24,
   },
   progressBar: {
     height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#2C2C3C',
     borderRadius: 3,
     overflow: 'hidden',
     marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#10b981',
+    backgroundColor: ACCENT,
     borderRadius: 3,
   },
   progressText: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
+    color: '#A0A0BC',
+    fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
   },
+
   cardOuter: {
-    borderRadius: 24,
-    padding: 2,
+    borderRadius: 18,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.4,
-    shadowRadius: 25,
-    elevation: 15,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
   },
   cardInner: {
-    borderRadius: 22,
-    padding: 28,
-    backgroundColor: '#0F172A',
+    borderRadius: 18,
+    padding: 24,
+    backgroundColor: CARD_BG,
+    borderWidth: 1,
+    borderColor: BORDER,
     minHeight: 400,
   },
+
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
     marginBottom: 20,
+    backgroundColor: ACCENT + '1A',
+    borderWidth: 1,
+    borderColor: ACCENT + '40',
   },
+
   question: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: 20,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
+
   infoContainer: {
-    gap: 16,
+    gap: 14,
   },
   warningBox: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     padding: 16,
-    borderRadius: 12,
-    borderLeftWidth: 4,
+    borderRadius: 13,
+    borderLeftWidth: 3,
     borderLeftColor: '#ef4444',
     gap: 12,
   },
   healthWarningText: {
     flex: 1,
     color: '#fca5a5',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 19,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: ACCENT + '14',
     padding: 16,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
+    borderRadius: 13,
+    borderLeftWidth: 3,
+    borderLeftColor: ACCENT,
     gap: 12,
   },
   infoText: {
     flex: 1,
-    color: '#6ee7b7',
-    fontSize: 14,
+    color: '#D8F79A',
+    fontSize: 13.5,
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 19,
   },
+
   inputSection: {
-    gap: 16,
+    gap: 14,
   },
   descriptionBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   descriptionText: {
-    color: '#cbd5e1',
-    fontSize: 14,
-    lineHeight: 20,
+    color: '#ffffff',
+    fontSize: 13.5,
+    lineHeight: 19,
     textAlign: 'center',
   },
   tipBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
+    gap: 6,
+    paddingHorizontal: 4,
   },
   tipText: {
-    color: '#fcd34d',
-    fontSize: 13,
+    color: ACCENT,
+    fontSize: 12.5,
     fontStyle: 'italic',
   },
+
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1C1F26',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: INPUT_BG,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: BORDER,
     paddingHorizontal: 16,
   },
   inputIcon: {
@@ -493,10 +518,18 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 14,
-    fontSize: 15,
+    paddingVertical: 15,
+    fontSize: 16,
     color: '#FFFFFF',
+    fontWeight: '600',
   },
+  inputUnit: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -511,6 +544,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+
   buttonContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -521,38 +555,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#374151',
-    paddingVertical: 16,
+    backgroundColor: 'transparent',
+    paddingVertical: 15,
     borderRadius: 12,
     gap: 8,
+    borderWidth: 1.5,
+    borderColor: ACCENT + '66',
   },
   backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    color: ACCENT,
+    fontSize: 15,
+    fontWeight: '700',
   },
   nextButton: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ACCENT,
+    paddingVertical: 15,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
   nextButtonFull: {
     flex: 1,
   },
-  nextButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
   nextButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#0E0E12',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
 });

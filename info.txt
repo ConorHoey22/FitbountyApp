@@ -1,30 +1,170 @@
 DEV ACCOUNT - conorhoey133@icloud.com - Test flight Build 
 
-
-BUGS on testFlight build ( {Physical device})
-
-User is logged out after closing the app , can we save password until they use the logout Functionality
-Frontend - HomeScreen containers look too big and clustered
-
-NumberPAd , unable to enter . also button covering it , MacrosScreen , Register
-
-Bug - No Profile Found after registering on HOME screen
-
-TEXT and FONTs not clear . White background , bit bigger aswell 
-
-text Box - text "Please enter "
-
-LOgin page . need to be LOGIN and Register with google /aplle . Dont have an account  , 
+----
 
 
-Reward system - Tyied to Workouts and LEVELS or step counts 
+CHECK Notes App - For Priority and organsied 
+
+
+
+
 
 
 
 ------
-Currently working on :  Reward System - -- Build out Reward Screen - 
 
-HOW TO EARN - 
+Currently Working on  - Start Nutrition ( Set TODO LIST - WORKED WELL THAT )
+
+
+Nutrition plan List 
+- Update Colors 
+Buttons need fixed and positioned 
+ - Add Food button show error on icon 
+ - Edit PLan Button -> Macros
+ Edit Macros needs updated 
+
+
+Weekly fitness plan  LIST 
+- EDIT PLAN is going to wrong area, I think we have a button to display modal with liek the plan so u can quickly see it 
+- Achieving weekly goal Front end should update - similar to TodaysPLAN 
+- FRont END should be same as Today plan style
+
+
+
+Rewards  - 
+Frontend and FLOW  , need someting more engaging to get users to work towards something 
+- Reward based off Streak ( Custom -> Set by the User )
+
+------ 
+
+
+Update Fitness Plan - 
+
+Frontend -
+Modal  1 - needs updated 
+Button -> update frontend of current 
+
+backend logic and frontend - IF USER updates Workout session goal , they should have to reselect days when they will do this , Do we allow double sesh (edge case)
+
+Record activity modal - should have a edit button which will allow the user to update progress made - E.g. User enter incorrect value early in the day and wants to revert. We would also need to revert XPGain here aswell
+
+
+
+
+List: 
+Home Screen  - FRONTEnd of components 
+
+Today Plan -  
+ - Record Activity - What if its rest day and user enter cardio or workout , does it count or get added ? Notifcation to user to tell them its been added
+ - Record Acitivity - What if the User has already hit their targets for the Week ? Notifcation to say this is extra work , consider increasing your goals
+FINDINGs - ATM we just add to the TOTAL use , Notifcations needed here 
+
+
+Weekly review modal 
+edit 
+
+
+habit tracker 
+
+-----
+
+-- NEED THIS NEXT NEED A Button on home screen to
+ update Plan ( Overall Plan) - UserHasEnteredTheirProfileDataTrigger goes back userPlan wich is like whats your name , weights we need like a flow to up Steps - Profiel button 
+ 
+  -- MODAL i think as we need only like Workout total , cardio , Steps so 
+
+Modal Which would you like to update? - Button 
+Close modal 
+New modal - Cardio amount -> plan cardio days 
+Message to say its been updated 
+Close modal 
+reopen  - update plan selection  Modal 
+Page 2 - Workout amount
+-> plan work days 
+
+Page - 3 - Steps amounts 
+
+
+
+
+
+
+ - Update Weekly Record  
+ -- Test Cases 
+
+
+
+
+Nutrition PLAN - Container Frontend 
+
+
+
+
+
+other modals probs 
+Profile - Charts numbers 
+Rewards page 
+Workoutmode
+
+
+
+
+
+DB Configuration 
+
+stepGoal  - This is the 
+ 
+
+_____________________________
+BETA RELEASE  - LIST TODO 
+COLORS - RED  , YELLOW , GREEN ( FOR PROGRESS BARS )
+
+TODO - fix component so that the logo is on each page or as we call it
+Add Macros needs updated frontend and needs numberPad and Done btn 
+Trackers - different colours / icons different colors aswell - MAcros addModal 
+Buttons maybe add a color? 
+MORE COLOR ON APP 
+
+_______________________________
+
+
+Gamify more - 
+So create a goal 
+Goal/task  Lose 10 pounds - Main Quest
+how will i achieve this - Sidequests 
+reward  - XP and in person personally created reward 
+
+Profile needs to based off who is logged in 
+----
+
+
+
+Gamify more - 
+So create a goal 
+Goal/task  Lose 10 pounds - Main Quest
+how will i achieve this - Sidequests 
+reward  - XP and in person personally created reward 
+
+
+Weight Tracker aswell 
+
+
+
+
+Medals / Challenges / in person rewards + challenges for routes
+
+
+
+------
+Currently working on :   Register - Bug on Security appearing cant see , i implemented that custom Validation
+
+
+
+
+Reward System - -- Build out Reward Screen - 
+
+HOW TO EARN - Reward system - Tie to Workouts and LEVELS or step counts 
+
 SET the WORKOUT REWARD amount
 
 1. Create Columns weeklyFitBKey  ( reuse for cardio etc ) 
@@ -47,11 +187,15 @@ SET the WORKOUT REWARD amount
             in 2 days and then log back in again it should not add more XP Rewards 
 
 
-//CURRentLY AT
 Reward Success Modals - Will pass rewardNotificationType then based of that value we will use logic to say which info and XP to give 
 Sound Effect for Reward - needs to be satisfiying ---- NOt UPDATING IN DB - BUG
 
  Daily XP rewards for completing workouts 
+
+Loading Screen - SPlash screen needs update 
+
+
+ need to sync all data on Profile to the Profile - REMOVE DUMMY DATA for all  components
 
 
 
@@ -412,6 +556,36 @@ Can update Macros - Complete
 
 PlanYourDay - Pulls data saved from the DB but then uses asyncstorage for currentprogress entered 
 Tests - does it reset at midnight with fresh progress bars? 
+
+
+How to implement Number pad Done Button 
+
+
+Call this component - <ActivityInputNumber> 
+
+              <ActivityInputNumberPad
+                icon="barbell-outline"
+                iconColor="#FFA940"
+                label="Workouts"
+                value={workoutsInputValue}
+                onChange={setWorkoutsInputValue}
+              />
+
+                //DONE Button For number Pad 
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+                So we user keyboardVisible 
+                        {keyboardVisible && (
+                                <View style={[styles.accessoryBar, { bottom: keyboardHeight }]}>
+                                <TouchableOpacity onPress={Keyboard.dismiss}>
+                                <Text style={styles.accessoryDoneText}>Done</Text>
+                                </TouchableOpacity>
+                                </View>
+                        )}
+
+  </View>
+
 
 
 ------------------------------------------

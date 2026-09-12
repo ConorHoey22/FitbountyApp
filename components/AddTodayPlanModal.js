@@ -7,11 +7,18 @@ import {
   Pressable,
   TextInput,
   TouchableOpacity,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
-import { getISOWeekKey } from '../utils/weeklyKeyCreate'; // ← add this import
+import { getISOWeekKey } from '../utils/weeklyKeyCreate';
+import ActivityInputNumberPad from './ActivityInputNumber';
+import { awardXP, removeXP } from '../lib/rewards';
+
+
 
 const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
   const [cardioInputValue, setCardioInputValue] = useState('');
@@ -22,8 +29,44 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
   const [currentSteps, setCurrentSteps] = useState(0);
   const [currentWorkouts, setCurrentWorkouts] = useState(0);
 
+  // Edit mode — lets the user correct today's totals instead of adding to them
+  const [isEditMode, setIsEditMode] = useState(false);
+
+
+  //DONE Button For number Pad 
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
   useEffect(() => {
-    if (visible) loadCurrentProgress();
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardVisible(true);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (visible) {
+      loadCurrentProgress();
+    } else {
+      setIsEditMode(false);
+      setCardioInputValue('');
+      setStepsInputValue('');
+      setWorkoutsInputValue('');
+    }
   }, [visible]);
 
   const loadCurrentProgress = async () => {
@@ -32,9 +75,8 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
       if (saved) {
         const parsed = JSON.parse(saved);
         const today = new Date().toISOString().split('T')[0];
-  
+
         if (parsed.date !== today) {
-          // New day — just reset local storage, DB is already up to date
           await AsyncStorage.removeItem('todayChecks');
           setCurrentCardio(0);
           setCurrentSteps(0);
@@ -54,64 +96,69 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
-  
+
       const workoutsCompleted = Number(parsed.workouts) || 0;
       const cardioMinutes = Number(parsed.cardio) || 0;
-  
-      if (workoutsCompleted === 0 && cardioMinutes === 0) return;
-  
+      const stepsCompleted = Number(parsed.steps) || 0;
+
+      if (workoutsCompleted === 0 && cardioMinutes === 0 && stepsCompleted === 0 ) return;
+
       const { data: profile, error: fetchError } = await supabase
         .from('userProfiles')
-        .select('weeklyFitBKey, weeklyWorkoutCount, weeklyCardioCount')
+        .select('weeklyFitBKey, weeklyWorkoutCount, weeklyCardioCount,dailyStepCount')
         .eq('id', session.user.id)
         .single();
-  
+
       if (fetchError) {
         console.error('Fetch profile error:', fetchError.message);
         return;
       }
-  
+
       const currentWeekKey = getISOWeekKey(new Date());
       const isSameWeek = profile?.weeklyFitBKey === currentWeekKey;
-  
+
       const newWorkoutCount = isSameWeek
         ? (profile.weeklyWorkoutCount || 0) + workoutsCompleted
         : workoutsCompleted;
-  
+
       const newCardioCount = isSameWeek
         ? (profile.weeklyCardioCount || 0) + cardioMinutes
         : cardioMinutes;
-  
+
+      const newStepCount = isSameWeek
+        ? (profile.weeklyStepCount || 0) + stepsCompleted
+        : stepsCompleted;
+
       const { error: updateError } = await supabase
         .from('userProfiles')
         .update({
           weeklyFitBKey: currentWeekKey,
           weeklyWorkoutCount: newWorkoutCount,
           weeklyCardioCount: newCardioCount,
+          dailyStepCount: newStepCount
         })
         .eq('id', session.user.id);
-  
+
       if (updateError) {
         console.error('Update profile error:', updateError.message);
       } else {
-        console.log('Pushed to Supabase:', { newWorkoutCount, newCardioCount, currentWeekKey });
+        console.log('Pushed to Supabase:', { newWorkoutCount, newCardioCount, currentWeekKey, newStepCount });
       }
     } catch (err) {
       console.error('Error pushing totals to Supabase:', err.message);
     }
   };
 
-
   const handleUpdate = async () => {
     try {
       const cardioToAdd = parseInt(cardioInputValue) || 0;
       const stepsToAdd = parseInt(stepsInputValue) || 0;
       const workoutsToAdd = parseInt(workoutsInputValue) || 0;
-  
+
       const newCardio = currentCardio + cardioToAdd;
       const newSteps = currentSteps + stepsToAdd;
       const newWorkouts = currentWorkouts + workoutsToAdd;
-  
+
       const todayChecks = {
         date: new Date().toISOString().split('T')[0],
         cardio: newCardio,
@@ -119,7 +166,7 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
         gym: newWorkouts > 0,
         workouts: newWorkouts,
       };
-  
+
       await AsyncStorage.setItem('todayChecks', JSON.stringify(todayChecks));
       setCurrentCardio(newCardio);
       setCurrentSteps(newSteps);
@@ -127,13 +174,32 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
       setCardioInputValue('');
       setStepsInputValue('');
       setWorkoutsInputValue('');
-  
-      // ✅ Push THIS update's increments straight to Supabase, right now
+
       await pushTotalsToSupabase({
         workouts: workoutsToAdd,
         cardio: cardioToAdd,
+        steps: stepsToAdd
       });
-  
+
+      // This will add XP 
+      if (cardioToAdd)
+      {
+        const resultCardio = await awardXP('cardio');
+
+      }
+
+      if(workoutsToAdd)
+      {
+        const resultWorkout = await awardXP('workout');
+
+      }
+
+      if(stepsToAdd)
+      {
+        const resultSteps = await awardXP('steps');
+      }
+
+
       if (onSave) onSave();
       onClose();
     } catch (error) {
@@ -141,7 +207,85 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
     }
   };
 
-  
+  // Edit mode: inputs hold the CORRECT total for today, not an amount to add.
+  // We diff against what was previously stored to correct Supabase totals
+  // and only award/remove XP when an activity toggles between
+  // logged (>0) and not-logged (0), since XP is flat-per-activity, not
+  // proportional to the amount entered.
+  const handleEditUpdate = async () => {
+    try {
+      const newCardio = parseInt(cardioInputValue) || 0;
+      const newSteps = parseInt(stepsInputValue) || 0;
+      const newWorkouts = parseInt(workoutsInputValue) || 0;
+
+      const cardioDiff = newCardio - currentCardio;
+      const stepsDiff = newSteps - currentSteps;
+      const workoutsDiff = newWorkouts - currentWorkouts;
+
+      const todayChecks = {
+        date: new Date().toISOString().split('T')[0],
+        cardio: newCardio,
+        steps: newSteps,
+        gym: newWorkouts > 0,
+        workouts: newWorkouts,
+      };
+
+      await AsyncStorage.setItem('todayChecks', JSON.stringify(todayChecks));
+
+      // Push only the difference so weekly Supabase totals stay accurate
+      await pushTotalsToSupabase({
+        workouts: workoutsDiff,
+        cardio: cardioDiff,
+        steps: stepsDiff,
+      });
+
+      // Reverse or award XP only when an activity toggles logged/not-logged
+      if (currentCardio === 0 && newCardio > 0) {
+        await awardXP('cardio');
+      } else if (currentCardio > 0 && newCardio === 0) {
+        await removeXP('cardio');
+      }
+
+      if (currentWorkouts === 0 && newWorkouts > 0) {
+        await awardXP('workout');
+      } else if (currentWorkouts > 0 && newWorkouts === 0) {
+        await removeXP('workout');
+      }
+
+      if (currentSteps === 0 && newSteps > 0) {
+        await awardXP('steps');
+      } else if (currentSteps > 0 && newSteps === 0) {
+        await removeXP('steps');
+      }
+
+      setCurrentCardio(newCardio);
+      setCurrentSteps(newSteps);
+      setCurrentWorkouts(newWorkouts);
+      setCardioInputValue('');
+      setStepsInputValue('');
+      setWorkoutsInputValue('');
+      setIsEditMode(false);
+
+      if (onSave) onSave();
+      onClose();
+    } catch (error) {
+      console.error('Error editing progress:', error);
+    }
+  };
+
+  const enterEditMode = () => {
+    setIsEditMode(true);
+    setCardioInputValue(String(currentCardio || ''));
+    setStepsInputValue(String(currentSteps || ''));
+    setWorkoutsInputValue(String(currentWorkouts || ''));
+  };
+
+  const cancelEditMode = () => {
+    setIsEditMode(false);
+    setCardioInputValue('');
+    setStepsInputValue('');
+    setWorkoutsInputValue('');
+  };
 
   const handleReset = async () => {
     await AsyncStorage.removeItem('todayChecks');
@@ -153,104 +297,119 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.overlay}>
+          <View style={styles.modalContainer}>
 
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>ACTIVITY</Text>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>ACTIVITY</Text>
+                </View>
+                <Text style={styles.title}>{isEditMode ? 'Edit Progress' : 'Update Progress'}</Text>
               </View>
-              <Text style={styles.title}>Update Progress</Text>
+              <Pressable onPress={onClose} style={styles.closeBtn}>
+                <Ionicons name="close" size={20} color="#A0A0BC" />
+              </Pressable>
             </View>
-            <Pressable onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color="#A0A0BC" />
-            </Pressable>
-          </View>
 
-          <Text style={styles.subtitle}>
-            Log your activity throughout the day · Smart watch integration coming soon
-          </Text>
+            <Text style={styles.subtitle}>
+              {isEditMode
+                ? 'Correct today\'s totals below — this replaces the value, it doesn\'t add to it.'
+                : 'Log your activity throughout the day · Smart watch integration coming soon'}
+            </Text>
 
-          {/* Current Progress */}
-          <View style={styles.progressCard}>
-            <Text style={styles.progressTitle}>Today so far</Text>
-            <View style={styles.progressRow}>
-              <View style={styles.progressItem}>
-                <Ionicons name="bicycle-outline" size={18} color={ACCENT} />
-                <Text style={styles.progressValue}>{currentCardio}</Text>
-                <Text style={styles.progressLabel}>min cardio</Text>
+            {/* Current Progress */}
+            <View style={styles.progressCard}>
+              <View style={styles.progressHeaderRow}>
+                <Text style={styles.progressTitle}>Today so far</Text>
+                {!isEditMode && (
+                  <TouchableOpacity onPress={enterEditMode} style={styles.editBtn}>
+                    <Ionicons name="create-outline" size={14} color={ACCENT} />
+                    <Text style={styles.editBtnText}>Edit</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-              <View style={styles.progressDivider} />
-              <View style={styles.progressItem}>
-                <Ionicons name="footsteps-outline" size={18} color="#A49BFF" />
-                <Text style={styles.progressValue}>{currentSteps}</Text>
-                <Text style={styles.progressLabel}>steps</Text>
-              </View>
-              <View style={styles.progressDivider} />
-              <View style={styles.progressItem}>
-                <Ionicons name="barbell-outline" size={18} color="#FFA940" />
-                <Text style={styles.progressValue}>{currentWorkouts}</Text>
-                <Text style={styles.progressLabel}>workouts</Text>
+              <View style={styles.progressRow}>
+                <View style={styles.progressItem}>
+                  <Ionicons name="bicycle-outline" size={18} color={ACCENT} />
+                  <Text style={styles.progressValue}>{currentCardio}</Text>
+                  <Text style={styles.progressLabel}>Cardio</Text>
+                </View>
+                <View style={styles.progressDivider} />
+                <View style={styles.progressItem}>
+                  <Ionicons name="footsteps-outline" size={18} color="#A49BFF" />
+                  <Text style={styles.progressValue}>{currentSteps}</Text>
+                  <Text style={styles.progressLabel}>Steps</Text>
+                </View>
+                <View style={styles.progressDivider} />
+                <View style={styles.progressItem}>
+                  <Ionicons name="barbell-outline" size={18} color="#FFA940" />
+                  <Text style={styles.progressValue}>{currentWorkouts}</Text>
+                  <Text style={styles.progressLabel}>Workouts</Text>
+                </View>
               </View>
             </View>
+
+            {/* Input Fields */}
+            <View style={styles.inputGroup}>
+              <ActivityInputNumberPad
+                icon="bicycle-outline"
+                iconColor={ACCENT}
+                label={isEditMode ? 'Cardio total (minutes)' : 'Cardio (minutes)'}
+                value={cardioInputValue}
+                onChange={setCardioInputValue}
+              />
+              <ActivityInputNumberPad
+                icon="footsteps-outline"
+                iconColor="#A49BFF"
+                label={isEditMode ? 'Steps total' : 'Steps'}
+                value={stepsInputValue}
+                onChange={setStepsInputValue}
+              />
+              <ActivityInputNumberPad
+                icon="barbell-outline"
+                iconColor="#FFA940"
+                label={isEditMode ? 'Workouts total' : 'Workouts'}
+                value={workoutsInputValue}
+                placeholder='test'
+                onChange={setWorkoutsInputValue}
+              />
+            </View>
+
+            {/* Buttons */}
+            {isEditMode ? (
+              <>
+                <TouchableOpacity style={styles.saveButton} onPress={handleEditUpdate}>
+                  <Ionicons name="checkmark-outline" size={18} color="#ffffff" />
+                  <Text style={styles.saveButtonText}>SAVE CORRECTION</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.resetButton} onPress={cancelEditMode}>
+                  <Text style={styles.resetButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity style={styles.saveButton} onPress={handleUpdate}>
+                <Ionicons name="checkmark-outline" size={18} color="#ffffff" />
+                <Text style={styles.saveButtonText}>SAVE PROGRESS</Text>
+              </TouchableOpacity>
+            )}
+
           </View>
-
-          {/* Input Fields */}
-          <View style={styles.inputGroup}>
-            <ActivityInput
-              icon="bicycle-outline"
-              iconColor={ACCENT}
-              label="Cardio (minutes)"
-              value={cardioInputValue}
-              onChange={setCardioInputValue}
-            />
-            <ActivityInput
-              icon="footsteps-outline"
-              iconColor="#A49BFF"
-              label="Steps"
-              value={stepsInputValue}
-              onChange={setStepsInputValue}
-            />
-            <ActivityInput
-              icon="barbell-outline"
-              iconColor="#FFA940"
-              label="Workouts"
-              value={workoutsInputValue}
-              onChange={setWorkoutsInputValue}
-            />
-          </View>
-
-          {/* Buttons */}
-          <TouchableOpacity style={styles.saveButton} onPress={handleUpdate}>
-            <Ionicons name="checkmark-outline" size={18} color="#0E0E12" />
-            <Text style={styles.saveButtonText}>SAVE PROGRESS</Text>
-          </TouchableOpacity>
-
-
         </View>
-      </View>
+      </TouchableWithoutFeedback>
+
+      {keyboardVisible && (
+        <View style={[styles.accessoryBar, { bottom: keyboardHeight }]}>
+          <TouchableOpacity onPress={Keyboard.dismiss}>
+            <Text style={styles.accessoryDoneText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </Modal>
   );
 };
-
-const ActivityInput = ({ icon, iconColor, label, value, onChange }) => (
-  <View style={styles.inputWrapper}>
-    <View style={styles.inputLabel}>
-      <Ionicons name={icon} size={16} color={iconColor} />
-      <Text style={styles.label}>{label}</Text>
-    </View>
-    <TextInput
-      style={styles.input}
-      placeholder="0"
-      placeholderTextColor="#4a4a5a"
-      keyboardType="number-pad"
-      value={value}
-      onChangeText={onChange}
-    />
-  </View>
-);
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const ACCENT   = '#C6F135';
@@ -258,8 +417,29 @@ const BG_MODAL = '#1A1A26';
 const SURFACE  = '#22222E';
 const SURFACE2 = '#2C2C3C';
 const BORDER   = '#42425A';
+const ACCENT2   = '#2563EB';
+
 
 const styles = StyleSheet.create({
+  accessoryBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'flex-end',
+  },
+  accessoryDoneText: {
+    backgroundColor: '#22222E',
+    borderWidth: 1,
+    borderRadius: 41,
+    borderColor: '#C6F135',
+    padding: 10,
+    color: '#C6F135',
+    fontSize: 16,
+    fontWeight: '700',
+    overflow: 'hidden',
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.75)',
@@ -279,8 +459,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -324,12 +502,10 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    color: '#A0A0BC',
+    color: '#ffffff',
     marginBottom: 18,
     lineHeight: 17,
   },
-
-  // Progress card
   progressCard: {
     backgroundColor: SURFACE,
     borderRadius: 14,
@@ -338,13 +514,34 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 20,
   },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   progressTitle: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#A0A0BC',
+    color: '#ffffff',
     letterSpacing: 1.2,
-    marginBottom: 12,
     textTransform: 'uppercase',
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: ACCENT + '18',
+    borderWidth: 1,
+    borderColor: ACCENT + '44',
+  },
+  editBtnText: {
+    color: ACCENT,
+    fontSize: 11,
+    fontWeight: '700',
   },
   progressRow: {
     flexDirection: 'row',
@@ -371,8 +568,6 @@ const styles = StyleSheet.create({
     height: 36,
     backgroundColor: BORDER,
   },
-
-  // Inputs
   inputGroup: {
     gap: 12,
     marginBottom: 20,
@@ -396,7 +591,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#DDDDF0',   // bright, readable
+    color: '#DDDDF0',
   },
   input: {
     width: 72,
@@ -411,25 +606,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-
-  // Buttons
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ACCENT,
+    backgroundColor: ACCENT2,
     paddingVertical: 14,
     borderRadius: 13,
     gap: 8,
     marginBottom: 10,
-    shadowColor: ACCENT,
+    shadowColor: ACCENT2,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 6,
   },
   saveButtonText: {
-    color: '#0E0E12',
+    color: '#ffffff',
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 1.5,

@@ -10,8 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  ScrollView,
+  Image,
+  Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -19,6 +25,9 @@ export default function RegisterScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   // Entrance animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -57,7 +66,21 @@ export default function RegisterScreen({ navigation }) {
     }).start();
   };
 
+  const validatePassword = (pw) => {
+    if (pw.length < 8) return 'Password must be at least 8 characters';
+    if (!/\d/.test(pw)) return 'Password must include a number';
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pw)) return 'Password must include a special character (e.g. !)';
+    return '';
+  };
+
   const handleRegister = async () => {
+    const pwError = validatePassword(password);
+    if (pwError) {
+      setPasswordError(pwError);
+      return;
+    }
+    setPasswordError('');
+
     if (password !== confirmPassword) {
       Alert.alert('Password Error', 'Passwords do not match.');
       return;
@@ -98,7 +121,17 @@ export default function RegisterScreen({ navigation }) {
               UserHasMacros: false,
               isCardioRewarded : false, 
               isWorkoutsRewarded : false, 
-              isDailyStepsRewarded : false, 
+              isDailyStepsRewarded : false,
+              workoutXPAmount : 0,
+              cardioXPAmount: 0,
+              stepsXPAmount: 0,
+              nutritionXPAmount: 0,
+              weeklyFitBKey: 0,
+              weeklyCardioCount: 0,
+              weeklyWorkoutCount: 0,
+              dailyStepCount: 0,
+              isCardioRewarded: 0,
+              weeklyStepCount: 0,
             },
           ]);
 
@@ -107,7 +140,10 @@ export default function RegisterScreen({ navigation }) {
         }
       }
     } catch (err) {
-      Alert.alert('Error', err.message);
+      const msg = err.message?.toLowerCase().includes('password')
+        ? 'Password must include a number and a special character.'
+        : err.message;
+      Alert.alert('Error', msg);
     } finally {
       setLoading(false);
     }
@@ -124,109 +160,176 @@ export default function RegisterScreen({ navigation }) {
       <View style={styles.blobTopRight} />
       <View style={styles.blobBottomLeft} />
 
-      <Animated.View
-        style={[
-          styles.container,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-        ]}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>NEW ACCOUNT</Text>
-          </View>
-          <Text style={styles.title}>Create{'\n'}Account</Text>
-          <Text style={styles.subtitle}>
-            Start your fitness journey today
-          </Text>
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.label}>EMAIL</Text>
-            <TextInput
-              placeholder="you@example.com"
-              placeholderTextColor="#4a4a5a"
-              value={email}
-              onChangeText={setEmail}
-              style={[
-                styles.input,
-                focusedField === 'email' && styles.inputFocused,
-              ]}
-              onFocus={() => setFocusedField('email')}
-              onBlur={() => setFocusedField(null)}
-              autoCapitalize="none"
-              keyboardType="email-address"
+        <Animated.View
+          style={[
+            styles.container,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Image
+              source={require('../lib/assets/FBLogo.png')}
+              style={styles.image}
             />
           </View>
 
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.label}>PASSWORD</Text>
-            <TextInput
-              placeholder="Min. 8 characters"
-              placeholderTextColor="#4a4a5a"
-              value={password}
-              onChangeText={setPassword}
-              style={[
-                styles.input,
-                focusedField === 'password' && styles.inputFocused,
-              ]}
-              onFocus={() => setFocusedField('password')}
-              onBlur={() => setFocusedField(null)}
-              secureTextEntry
-            />
+          <View style={styles.titleWrapper}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>NEW ACCOUNT</Text>
+            </View>
+            {/* <Text style={styles.title}>Create{'\n'}Account</Text> */}
+            <Text style={styles.title}>
+              Start your fitness journey today
+            </Text>
           </View>
 
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.label}>CONFIRM PASSWORD</Text>
-            <TextInput
-              placeholder="Repeat your password"
-              placeholderTextColor="#4a4a5a"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              style={[
-                styles.input,
-                focusedField === 'confirm' && styles.inputFocused,
-                confirmPassword.length > 0 && password !== confirmPassword
-                  ? styles.inputError
-                  : null,
-              ]}
-              onFocus={() => setFocusedField('confirm')}
-              onBlur={() => setFocusedField(null)}
-              secureTextEntry
-            />
-            {confirmPassword.length > 0 && password !== confirmPassword && (
-              <Text style={styles.errorText}>Passwords do not match</Text>
-            )}
-          </View>
+          {/* Form Card */}
+          <View style={styles.card}>
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>EMAIL</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  focusedField === 'email' && styles.inputFocused,
+                ]}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={focusedField === 'email' ? ACCENT : '#4a4a5a'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  placeholder="Enter your email"
+                  placeholderTextColor={PLACEHOLDER}
+                  value={email}
+                  onChangeText={setEmail}
+                  style={[styles.input, { flex: 1 }]}
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField(null)}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+            </View>
 
-          <Animated.View style={{ transform: [{ scale: scaleBtn }], marginTop: 8 }}>
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonLoading]}
-              onPress={handleRegister}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              disabled={loading}
-              activeOpacity={1}
-            >
-              {loading ? (
-                <Text style={styles.buttonText}>CREATING ACCOUNT…</Text>
-              ) : (
-                <Text style={styles.buttonText}>GET STARTED →</Text>
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>PASSWORD</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  focusedField === 'password' && styles.inputFocused,
+                  passwordError && styles.inputError,
+                ]}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={18}
+                  color={focusedField === 'password' ? ACCENT : '#4a4a5a'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  placeholder="Enter your password"
+                  placeholderTextColor={PLACEHOLDER}
+                  value={password}
+                  onChangeText={(t) => { setPassword(t); setPasswordError(''); }}
+                  style={[styles.input, { flex: 1 }]}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField(null)}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={18}
+                    color={PLACEHOLDER}
+                  />
+                </TouchableOpacity>
+              </View>
+              {passwordError ? (
+                <Text style={styles.errorText}>{passwordError}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>CONFIRM PASSWORD</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  focusedField === 'confirm' && styles.inputFocused,
+                  confirmPassword.length > 0 && password !== confirmPassword
+                    ? styles.inputError
+                    : null,
+                ]}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={18}
+                  color={focusedField === 'confirm' ? ACCENT : '#4a4a5a'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  placeholder="Confirm your password"
+                  placeholderTextColor={PLACEHOLDER}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  style={[styles.input, { flex: 1 }]}
+                  onFocus={() => setFocusedField('confirm')}
+                  onBlur={() => setFocusedField(null)}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={18}
+                    color={PLACEHOLDER}
+                  />
+                </TouchableOpacity>
+              </View>
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <Text style={styles.errorText}>Passwords do not match</Text>
               )}
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+            </View>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.footerLink}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+            <Animated.View style={{ transform: [{ scale: scaleBtn }], marginTop: 8 }}>
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonLoading]}
+                onPress={handleRegister}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                disabled={loading}
+                activeOpacity={1}
+              >
+                {loading ? (
+                  <Text style={styles.buttonText}>CREATING ACCOUNT…</Text>
+                ) : (
+                  <Text style={styles.buttonText}>GET STARTED →</Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.footerLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -237,6 +340,7 @@ const SURFACE = '#18181F';      // card surface
 const BORDER = '#2a2a35';       // default border
 const BORDER_FOCUS = '#C6F135'; // focused border
 const BORDER_ERROR = '#FF4D6D'; // error border
+const PLACEHOLDER = '#EDEDED';
 
 const styles = StyleSheet.create({
   root: {
@@ -266,15 +370,29 @@ const styles = StyleSheet.create({
     left: -80,
   },
 
-  container: {
-    flex: 1,
-    paddingHorizontal: 28,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  container: {
+    paddingHorizontal: 28,
   },
 
   // Header
   header: {
-    marginBottom: 40,
+    alignItems: 'center',
+    marginBottom: -SCREEN_WIDTH * 0.30,
+    marginTop: -120,
+  },
+  image: {
+    width: SCREEN_WIDTH * 1.2,
+    height: SCREEN_WIDTH * 1,
+    resizeMode: 'contain',
+    alignSelf: 'center',
+  },
+  titleWrapper: {
+    marginBottom: 24,
   },
   badge: {
     alignSelf: 'flex-start',
@@ -293,49 +411,65 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   title: {
-    fontSize: 44,
-    fontWeight: '900',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFFFFF',
-    lineHeight: 50,
-    letterSpacing: -1,
+    // lineHeight: 50,
+
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 15,
-    color: '#6B6B80',
+    color: '#ffffff',
     letterSpacing: 0.2,
   },
 
-  // Form
-  form: {
-    gap: 4,
+  // Card
+  card: {
+    backgroundColor: SURFACE,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: BORDER,
   },
   fieldWrapper: {
     marginBottom: 18,
   },
   label: {
-    color: '#5a5a6e',
+    color: '#ffffff',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.5,
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: SURFACE,
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0E0E12',
     borderWidth: 1.5,
     borderColor: BORDER,
-    color: '#FFFFFF',
-    padding: 16,
     borderRadius: 12,
-    fontSize: 15,
-    letterSpacing: 0.3,
+    paddingHorizontal: 14,
   },
   inputFocused: {
     borderColor: BORDER_FOCUS,
-    backgroundColor: '#1c1c24',
+    backgroundColor: '#13131a',
   },
   inputError: {
     borderColor: BORDER_ERROR,
+  },
+  inputIcon: {
+    color: PLACEHOLDER,
+    marginRight: 10,
+  },
+  input: {
+    paddingVertical: 15,
+    fontSize: 15,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  eyeIcon: {
+    paddingLeft: 10,
   },
   errorText: {
     color: BORDER_ERROR,
@@ -371,10 +505,10 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 36,
+    marginTop: 20,
   },
   footerText: {
-    color: '#5a5a6e',
+    color: '#ffffff',
     fontSize: 14,
   },
   footerLink: {

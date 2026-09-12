@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   View,
@@ -9,9 +9,14 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  Keyboard,
+  Platform,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import ActivityInputNumberPad from '../components/ActivityInputNumber';
+
 
 export default function CreateUserPlan() {
   const navigation = useNavigation();
@@ -22,6 +27,31 @@ export default function CreateUserPlan() {
   // so it can't be accidentally reset by a state update mid-flight
   const submittingRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // DONE Button For number pad
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardVisible(true);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const [answers, setAnswers] = useState({
     name: '',
@@ -37,12 +67,12 @@ export default function CreateUserPlan() {
   });
 
   const questions = [
-    { key: 'name',          label: "What's your name?",                               required: true,  type: 'text' },
+    { key: 'name',          label: "What's your name?",                                required: true,  type: 'text' },
     { key: 'goal',          label: 'What is your goal?',                               required: true,  type: 'text' },
     { key: 'unit',          label: 'Which unit of measurement would you like to use?', required: true,  type: 'unit' },
     { key: 'weight',        label: 'What is your current weight?',                     required: false, type: 'weight' },
     { key: 'workoutDays',   label: 'How many days a week would you like to work out?', required: false, type: 'workoutDays' },
-    { key: 'steps',         label: 'How many daily steps would you like to aim for?',  required: false, type: 'steps' },
+    { key: 'steps',         label: 'How many steps would you like to aim for daily?',  required: false, type: 'steps' },
     { key: 'cardioMinutes', label: 'How many minutes of cardio per week?',             required: false, type: 'cardioMinutes' },
   ];
 
@@ -122,10 +152,11 @@ export default function CreateUserPlan() {
           startingWeight:      weightInKg,
           currentWeight:       weightInKg,
           workoutSessionsGoal: answers.workoutDays || null,
-          stepGoal:            answers.steps       || null,
+          stepGoal:            answers.steps || null,
           cardioGoal:          answers.cardioMinutes || null,
           UserHasEnteredTheirProfileDataTrigger: true,
           UserHasWeeklyPlanSetup: false,
+          weeklyStepCount: answers.steps * 7,
           lastupdate_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -214,95 +245,106 @@ export default function CreateUserPlan() {
 
         {/* Weight — KG */}
         {currentQ.type === 'weight' && answers.unit === 'KG' && (
-          <TextInput
-            style={styles.input}
-            placeholder="Enter weight in KG"
-            placeholderTextColor="#4a4a5a"
-            keyboardType="decimal-pad"
-            value={answers.weightKg}
-            onChangeText={(val) =>
-              handleChange('weightKg', val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))
-            }
-          />
+          <View style={styles.inputGroup}>
+            <ActivityInputNumberPad
+              label="Weight"
+              icon="scale-outline"
+              iconColor={ACCENT}
+              value={answers.weightKg}
+              onChange={(val) =>
+                handleChange('weightKg', val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))
+              }
+              plain
+            />
+          </View>
         )}
 
         {/* Weight — Stone */}
         {currentQ.type === 'weight' && answers.unit === 'Stone' && (
-          <View style={styles.splitRow}>
-            <TextInput
-              style={[styles.input, { flex: 1, marginRight: 8 }]}
-              placeholder="Stone"
-              placeholderTextColor="#4a4a5a"
-              keyboardType="decimal-pad"
+          <View style={styles.inputGroup}>
+            <ActivityInputNumberPad
+              label="Stone"
+              iconColor={ACCENT}
+              icon="scale-outline"
               value={answers.weightStone}
-              onChangeText={(val) =>
+              onChange={(val) =>
                 handleChange('weightStone', val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))
               }
+              plain
             />
-            <TextInput
-              style={[styles.input, { flex: 1, marginLeft: 8 }]}
-              placeholder="Lbs"
-              placeholderTextColor="#4a4a5a"
-              keyboardType="decimal-pad"
+            <ActivityInputNumberPad
+              label="lb"
+              iconColor={ACCENT}
+              icon="scale-outline"
               value={answers.weightLbs}
-              onChangeText={(val) =>
+              onChange={(val) =>
                 handleChange('weightLbs', val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))
               }
+              plain
             />
           </View>
         )}
 
         {/* Weight — Pounds */}
         {currentQ.type === 'weight' && answers.unit === 'Pounds' && (
-          <TextInput
-            style={styles.input}
-            placeholder="Enter weight in pounds"
-            placeholderTextColor="#4a4a5a"
-            keyboardType="decimal-pad"
-            value={answers.weightPounds}
-            onChangeText={(val) =>
-              handleChange('weightPounds', val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))
-            }
-          />
+          <View style={styles.inputGroup}>
+            <ActivityInputNumberPad
+              label="Pounds"
+              iconColor={ACCENT}
+              icon="scale-outline"
+              value={answers.weightPounds}
+              onChange={(val) =>
+                handleChange('weightPounds', val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))
+              }
+              plain
+            />
+          </View>
         )}
 
         {/* Workout days */}
         {currentQ.type === 'workoutDays' && (
-          <TextInput
-            style={styles.input}
-            placeholder="1 – 7 days"
-            placeholderTextColor="#4a4a5a"
-            keyboardType="number-pad"
-            value={answers.workoutDays}
-            onChangeText={(val) => {
-              const n = val.replace(/[^0-9]/g, '');
-              if (n === '' || (+n >= 0 && +n <= 7)) handleChange('workoutDays', n);
-            }}
-          />
+          <View style={styles.inputGroup}>
+            <ActivityInputNumberPad
+              label="Between 1 - 7 days "
+              iconColor={ACCENT}
+              icon="barbell-outline"
+              value={answers.workoutDays}
+              onChange={(val) => {
+                const n = val.replace(/[^0-9]/g, '');
+                if (n === '' || (+n >= 0 && +n <= 7)) handleChange('workoutDays', n);
+              }}
+              plain
+            />
+          </View>
         )}
 
         {/* Steps */}
         {currentQ.type === 'steps' && (
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 10000"
-            placeholderTextColor="#4a4a5a"
-            keyboardType="number-pad"
-            value={answers.steps}
-            onChangeText={(val) => handleChange('steps', val.replace(/[^0-9]/g, ''))}
-          />
+          <View style={styles.inputGroup}>
+            <ActivityInputNumberPad
+              label="Daily Step Count"
+              iconColor={ACCENT}
+              icon="footsteps-outline"
+              value={answers.steps}
+              onChange={(val) => handleChange('steps', val.replace(/[^0-9]/g, ''))}
+              plain
+            />
+          </View>
         )}
 
         {/* Cardio minutes */}
         {currentQ.type === 'cardioMinutes' && (
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 150"
-            placeholderTextColor="#4a4a5a"
-            keyboardType="number-pad"
-            value={answers.cardioMinutes}
-            onChangeText={(val) => handleChange('cardioMinutes', val.replace(/[^0-9]/g, ''))}
-          />
+          <View style={styles.inputGroup}>
+            <ActivityInputNumberPad
+              label="Cardio"
+              iconColor={ACCENT}
+              icon="bicycle-outline"
+              style={styles.input}
+              value={answers.cardioMinutes}
+              onChange={(val) => handleChange('cardioMinutes', val.replace(/[^0-9]/g, ''))}
+              plain
+            />
+          </View>
         )}
 
         {/* Default text */}
@@ -310,7 +352,7 @@ export default function CreateUserPlan() {
           <TextInput
             style={styles.input}
             placeholder="Type here…"
-            placeholderTextColor="#4a4a5a"
+            placeholderTextColor="#ffffff"
             value={String(answers[currentQ.key])}
             onChangeText={(val) => handleChange(currentQ.key, val)}
           />
@@ -348,8 +390,15 @@ export default function CreateUserPlan() {
             />
           ))}
         </View>
-
       </ScrollView>
+
+      {keyboardVisible && (
+        <View style={[styles.accessoryBar, { bottom: keyboardHeight }]}>
+          <TouchableOpacity onPress={Keyboard.dismiss}>
+            <Text style={styles.accessoryDoneText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -360,6 +409,28 @@ const SURFACE = '#22222E';
 const BORDER  = '#42425A';
 
 const styles = StyleSheet.create({
+  inputGroup: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#DDDDF0',
+    marginBottom: 6,
+  },
+  simpleInput: {
+    backgroundColor: SURFACE,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
   container:     { flex: 1, backgroundColor: BG },
   blobTopRight:  { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: ACCENT, opacity: 0.05, top: -80, right: -80 },
   blobBottomLeft:{ position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: '#5B4FE8', opacity: 0.06, bottom: 60, left: -80 },
@@ -369,7 +440,7 @@ const styles = StyleSheet.create({
   meta:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   badge:     { backgroundColor: ACCENT + '22', borderWidth: 1, borderColor: ACCENT + '55', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
   badgeText: { color: ACCENT, fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
-  stepCount: { color: '#A0A0BC', fontSize: 12, fontWeight: '600' },
+  stepCount: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
 
   progressTrack: { height: 4, backgroundColor: SURFACE, borderRadius: 2, marginBottom: 32, overflow: 'hidden' },
   progressFill:  { height: '100%', backgroundColor: ACCENT, borderRadius: 2 },
@@ -388,7 +459,7 @@ const styles = StyleSheet.create({
   optionGroup:         { gap: 10, marginBottom: 28 },
   optionCard:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: SURFACE, borderWidth: 1.5, borderColor: BORDER, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 18 },
   optionCardSelected:  { borderColor: ACCENT, backgroundColor: ACCENT + '14' },
-  optionText:          { color: '#A0A0BC', fontSize: 16, fontWeight: '600' },
+  optionText:          { color: '#ffffff', fontSize: 16, fontWeight: '600' },
   optionTextSelected:  { color: '#FFFFFF', fontWeight: '700' },
 
   nextButton:         { backgroundColor: ACCENT, paddingVertical: 17, borderRadius: 14, alignItems: 'center', marginBottom: 12, shadowColor: ACCENT, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.32, shadowRadius: 16, elevation: 8 },
@@ -396,10 +467,30 @@ const styles = StyleSheet.create({
   nextButtonText:     { color: '#0E0E12', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
 
   skipButton:     { alignItems: 'center', paddingVertical: 13, borderRadius: 14, borderWidth: 1.5, borderColor: BORDER, marginBottom: 32 },
-  skipButtonText: { color: '#A0A0BC', fontSize: 14, fontWeight: '600' },
+  skipButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
 
   dots:      { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot:       { width: 6, height: 6, borderRadius: 3, backgroundColor: BORDER },
   dotActive: { width: 18, backgroundColor: ACCENT },
   dotDone:   { backgroundColor: ACCENT + '55' },
+
+  accessoryBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'flex-end',
+  },
+  accessoryDoneText: {
+    backgroundColor: '#22222E',
+    borderWidth: 1,
+    borderRadius: 41,
+    borderColor: ACCENT,
+    padding: 10,
+    color: ACCENT,
+    fontSize: 16,
+    fontWeight: '700',
+    overflow: 'hidden',
+  },
 });
