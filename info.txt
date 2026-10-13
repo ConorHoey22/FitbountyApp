@@ -1,33 +1,35 @@
 DEV ACCOUNT - conorhoey133@icloud.com - Test flight Build 
 
 ----
-
-
 CHECK Notes App - For Priority and organsied 
-
-
-
-
-
-
-
 ------
 
-Currently Working on  - Start Nutrition ( Set TODO LIST - WORKED WELL THAT )
+Currently Working on  - 
 
+
+// Reset Stats  Nutrition Working  , Steps + macros  - Daily Macros utils.js  PASS
 
 Nutrition plan List 
-- Update Colors 
-Buttons need fixed and positioned 
- - Add Food button show error on icon 
- - Edit PLan Button -> Macros
- Edit Macros needs updated 
+- Functionality  - Complete 
+- Edit Plan Button -> Macros
+- Edit Macros needs updated 
+- reached GOAL of macros 
+
+
+
+
+
+Test - Steps : 1534 will it reset to 0 on todays Plan  - PASS 
+Test - 84 cals, 12 , 10 , 11 macro will it update nutrition at 12am - PASS
+
+ 
 
 
 Weekly fitness plan  LIST 
 - EDIT PLAN is going to wrong area, I think we have a button to display modal with liek the plan so u can quickly see it 
 - Achieving weekly goal Front end should update - similar to TodaysPLAN 
-- FRont END should be same as Today plan style
+- Fronend should be same as Today plan style
+- Does the Weekly Goals reset 
 
 
 

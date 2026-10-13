@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -12,7 +10,8 @@ import {
   StatusBar,
   ScrollView,
   Dimensions,
-  Image
+  Image,
+  AppState,
 } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
@@ -24,6 +23,8 @@ import { getProfile } from '../lib/GetProfile';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
+
+import { checkAndResetDailyMacros } from '../utils/dailyMacros';
 
 import XPBarLevel from '../components/XPBarLevel';
 import TrackerBar from '../components/TrackerBar';
@@ -46,6 +47,14 @@ export default function Home() {
   const [passwordFocused, setPasswordFocused] = useState(false);
 
   const [profile, setProfile] = useState(null);
+
+
+  // Add this helper frontend helper 
+const formatCompactNumber = (num) => {
+  if (num === undefined || num === null) return '—';
+  if (num >= 1000) return `${(num / 1000).toFixed(num % 1000 === 0 ? 0 : 1)}k`;
+  return String(num);
+};
 
   // Macros Goals
   const [caloriesGoal, SetCaloriesGoal] = useState();
@@ -139,53 +148,161 @@ const loadProfile = async () => {
   }
 };
 
+
 useEffect(() => {
+  let isMounted = true;
+  let midnightTimer;
+
+  // Load profile and goals
   loadProfile();
-}, []);
 
-  const triggerReward  = async () => { 
-    try
-    {   
-   
-        // Modal ( Cardio )
-        const [rewardNotficationModalVisible, setRewardNotificationModalVisible] = useState(true,rewardNotficationType);
-
-    }
-    catch (err) {
-      console.error('Trigger Reward error:', err.message);
-    }
-
-  }; 
-
-  const syncWeeklyStats = async () => {
+  // Check and restore/reset today's consumed macros
+  const checkDailyMacros = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      const { data: profile, error } = await supabase
-        .from('userProfiles')
-        .select('weeklyFitBKey, weeklyWorkoutCount , weeklyCardioCount')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error || !profile) return;
-
-      const currentWeekKey = getISOWeekKey(new Date());
-
-  
+      await checkAndResetDailyMacros({
+        setCaloriesConsumed: (value) => {
+          if (isMounted) SetCaloriesConsumed(value);
+        },
+        setProteinConsumed: (value) => {
+          if (isMounted) SetProteinConsumed(value);
+        },
+        setCarbohydratesConsumed: (value) => {
+          if (isMounted) SetCarbohydratesConsumed(value);
+        },
+        setFatsConsumed: (value) => {
+          if (isMounted) SetFatsConsumed(value);
+        },
+      });
     } catch (err) {
-      console.error('Weekly sync error:', err.message);
+      console.error('Daily macro check failed:', err.message);
     }
   };
 
-    
-  // ── Weekly workout sync — runs every time screen is focused ──
-  useFocusEffect(
-    useCallback(() => {
-     
-      syncWeeklyStats();
-    }, [])
+  // Schedule the next midnight check
+  const scheduleMidnightCheck = () => {
+    clearTimeout(midnightTimer);
+
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+
+    midnightTimer = setTimeout(async () => {
+      await checkDailyMacros();
+
+      if (isMounted) {
+        scheduleMidnightCheck();
+      }
+    }, nextMidnight.getTime() - now.getTime());
+  };
+
+  // Initial daily check
+  checkDailyMacros();
+  scheduleMidnightCheck();
+
+  // Check again when the app becomes active
+  const subscription = AppState.addEventListener(
+    'change',
+    (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkDailyMacros();
+        scheduleMidnightCheck();
+      } else {
+        clearTimeout(midnightTimer);
+      }
+    }
   );
+
+  return () => {
+    isMounted = false;
+    clearTimeout(midnightTimer);
+    subscription.remove();
+  };
+}, []);
+
+const triggerReward = async () => {
+  try {
+    // Keep your existing reward logic here.
+  } catch (err) {
+    console.error('Trigger Reward error:', err.message);
+  }
+};
+
+const syncWeeklyStats = async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    const { data: profile, error } = await supabase
+      .from('userProfiles')
+      .select('weeklyFitBKey, weeklyWorkoutCount, weeklyCardioCount')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error || !profile) return;
+
+    const currentWeekKey = getISOWeekKey(new Date());
+
+    // Keep your existing weekly sync logic here.
+  } catch (err) {
+    console.error('Weekly sync error:', err.message);
+  }
+};
+
+// Weekly workout sync — still runs whenever Home is focused
+useFocusEffect(
+  useCallback(() => {
+    syncWeeklyStats();
+  }, [])
+);
+
+// useEffect(() => {
+//   loadProfile();
+// }, []);
+
+//   const triggerReward  = async () => { 
+//     try
+//     {   
+   
+//         // Modal ( Cardio )
+//         const [rewardNotficationModalVisible, setRewardNotificationModalVisible] = useState(true,rewardNotficationType);
+
+//     }
+//     catch (err) {
+//       console.error('Trigger Reward error:', err.message);
+//     }
+
+//   }; 
+
+//   const syncWeeklyStats = async () => {
+//     try {
+//       const { data: { session } } = await supabase.auth.getSession();
+//       if (!session?.user) return;
+
+//       const { data: profile, error } = await supabase
+//         .from('userProfiles')
+//         .select('weeklyFitBKey, weeklyWorkoutCount , weeklyCardioCount')
+//         .eq('id', session.user.id)
+//         .single();
+
+//       if (error || !profile) return;
+
+//       const currentWeekKey = getISOWeekKey(new Date());
+
+  
+//     } catch (err) {
+//       console.error('Weekly sync error:', err.message);
+//     }
+//   };
+
+    
+//   // ── Weekly workout sync — runs every time screen is focused ──
+//   useFocusEffect(
+//     useCallback(() => {
+     
+//       syncWeeklyStats();
+//     }, [])
+//   );
+
 
 
   
@@ -229,39 +346,35 @@ const MACRO_CARBS = '#2563EB';   // blue
 const MACRO_FAT = '#F97316';     // orange
 const MACRO_CALORIES = '#EC4899'; // pink, if you track calories separately
 
-
-// ─── nutritionRows — add a `color` field per item ──
 const nutritionRows = [
   {
     key: 'protein',
     label: 'Protein',
     icon: 'flame-outline',
-    consumed: profile.proteinConsumed,
-    goal: profile.proteinGoal,
-    unit: 'g',
+    consumed: proteinConsumed,
+    goal: proteinGoal,
+    unit: 'grams',
     color: MACRO_PROTEIN,
   },
   {
     key: 'carbs',
     label: 'Carbs',
     icon: 'nutrition-outline',
-    consumed: profile.carbohydratesConsumed,
-    goal: profile.carbsGoal,
-    unit: 'g',
+    consumed: carbohydratesConsumed,
+    goal: carbohydratesGoal,
+    unit: 'grams',
     color: MACRO_CARBS,
   },
   {
     key: 'fat',
     label: 'Fat',
     icon: 'fish-outline',
-    consumed: profile.fatsConsumed,
-    goal: profile.fatGoal,
-    unit: 'g',
+    consumed: fatsConsumed,
+    goal: fatsGoal,
+    unit: 'grams',
     color: MACRO_FAT,
   },
 ];
-
-
 
 
 
@@ -280,15 +393,15 @@ const weeklyRows = [
     icon: 'heart-outline',
     consumed: profile.weeklyCardioCount,
     goal:  profile.cardioGoal,
-    unit: 'min',
+    unit: 'minutes',
     color: WEEKLY_CARDIO,
   },
   {
     key: 'steps',
-    label: 'Steps ( TODAY ) ',
+    label: 'Steps',
     icon: 'footsteps-outline',
-    consumed: profile.dailyStepCount,
-    goal: profile.stepGoal ,
+    consumed: profile.stepGoal,
+    goal: profile.weeklyStepCount ,
     unit: 'steps',
     color: WEEKLY_STEPS,
   },
@@ -298,7 +411,7 @@ const weeklyRows = [
     icon: 'barbell-outline',
     consumed: profile.weeklyWorkoutCount,
     goal: profile.workoutSessionsGoal,
-    unit: 'workouts',
+    unit: 'sessions',
     color: WEEKLY_WORKOUTS,
   },
 ];
@@ -357,13 +470,13 @@ const weeklyRows = [
             
             <TodayPlanCard profile={profile} onActivitySaved={loadProfile} />
 
-            <View style={styles.cardSeparation}>
+            {/* <View style={styles.cardSeparation}>
 
             </View>
-        
+         */}
 
-            {/* ── Nutrition Card ── */}
-            <View style={styles.cardContainer}>
+              {/* ── Nutrition Card ── */}
+             <View style={styles.cardContainer}>
 
               {/* Card header */}
               <View style={styles.cardHeader}>
@@ -376,55 +489,90 @@ const weeklyRows = [
                 </View>
               </View>
 
-              <View style={styles.macroList}>
+              {/* Calories — horizontal bar across the top */}
+              <View style={styles.caloriesBar}>
+                <View style={styles.caloriesBarTop}>
+                  <View style={styles.caloriesBarLeft}>
+                    <View style={[styles.caloriesBarIconWrap, { backgroundColor: MACRO_CALORIES + '22' }]}>
+                      <Ionicons name="flame" size={16} color={MACRO_CALORIES} />
+                    </View>
+                    <Text style={styles.caloriesBarLabel}>Calories</Text>
+                  </View>
+                  <Text
+                    style={[styles.caloriesBarValue, { color: MACRO_CALORIES }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
+                    {formatCompactNumber(caloriesConsumed)}/{formatCompactNumber(caloriesGoal)} kcal
+                  </Text>
+                </View>
+
+                <View style={styles.caloriesBarTrack}>
+                  <View
+                    style={[
+                      styles.caloriesBarTrackFill,
+                      {
+                        width: `${caloriesGoal ? Math.min(caloriesConsumed / caloriesGoal, 1) * 100 : 0}%`,
+                        backgroundColor: MACRO_CALORIES,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.macroGrid}>
                 {nutritionRows.map((item) => {
                   const pct = item.goal ? Math.min(item.consumed / item.goal, 1) : 0;
                   return (
-                    <View key={item.key} style={styles.macroRow}>
-                      <View style={[styles.macroRowIcon, { backgroundColor: item.color + '18' }]}>
-                        <Ionicons name={item.icon} size={16} color={item.color} />
+                    <View key={item.key} style={styles.macroTile}>
+                      <View style={[styles.macroTileIconWrap, { backgroundColor: item.color + '22' }]}>
+                        <Ionicons name={item.icon} size={18} color={item.color} />
                       </View>
 
-                      <View style={styles.macroRowBody}>
-                        <View style={styles.macroRowTopLine}>
-                          <Text style={styles.macroRowLabel}>{item.label}</Text>
-                          <Text style={styles.macroRowGoal}>
-                            {item.consumed}
-                            <Text style={styles.macroRowGoal}> / {item.goal} {item.unit}</Text>
-                          </Text>
-                        </View>
-                        <View style={styles.macroTrack}>
-                          <View style={[styles.macroTrackFill, { width: `${pct * 100}%`, backgroundColor: item.color }]} />
-                        </View>
+                      <Text style={styles.macroTileTitle}>{item.label}</Text>
+                      <Text
+                        style={[styles.macroTileValue, { color: item.color }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                      >
+                        {formatCompactNumber(item.consumed)}/{formatCompactNumber(item.goal)}
+                      </Text>
+                      <Text style={styles.macroTileUnit}>{item.unit}</Text>
+
+                      <View style={styles.macroTileTrack}>
+                        <View
+                          style={[
+                            styles.macroTileTrackFill,
+                            { width: `${pct * 100}%`, backgroundColor: item.color },
+                          ]}
+                        />
                       </View>
                     </View>
                   );
                 })}
-
-
-
-                {/* Buttons */}
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => setMacrosModalVisible(true)}
-                  >
-                    <Ionicons name="add-outline" size={18} color="#0E0E12" />
-                    <Text style={styles.actionText}>Add Food</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.actionButtonOutline}
-                    onPress={() => navigation.navigate('UpdateMacrosPlan')}
-                  >
-                    <Ionicons name="options-outline" size={18} color={ACCENT} />
-                    <Text style={styles.actionTextOutline}>Edit Plan</Text>
-                  </TouchableOpacity>
-
-              
-                </View>
-
               </View>
+
+              {/* Buttons */}
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => setMacrosModalVisible(true)}
+                >
+                  <Ionicons name="add-outline" size={18} color="#0E0E12" />
+                  <Text style={styles.actionText}>Add</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButtonOutline}
+                  onPress={() => navigation.navigate('UpdateMacrosPlan')}
+                >
+                  <Ionicons name="options-outline" size={18} color={ACCENT} />
+                  <Text style={styles.actionTextOutline}>Edit Macros</Text>
+                </TouchableOpacity>
+              </View>
+
             </View>
 
             <View style={styles.cardSeparation}>
@@ -446,51 +594,58 @@ const weeklyRows = [
                 </View>
               </View>
 
-              <View style={styles.macroList}>
+              <View style={styles.macroGrid}>
                 {weeklyRows.map((item) => {
                   const pct = item.goal ? Math.min(item.consumed / item.goal, 1) : 0;
                   return (
-                    <View key={item.key} style={styles.macroRow}>
-                      <View style={styles.macroRowIcon}>
-                        <Ionicons name={item.icon} size={16} color={ACCENT} />
+                    <View key={item.key} style={styles.macroTile}>
+                      <View style={[styles.macroTileIconWrap, { backgroundColor: item.color + '22' }]}>
+                        <Ionicons name={item.icon} size={18} color={item.color} />
                       </View>
 
-                      <View style={styles.macroRowBody}>
-                        <View style={styles.macroRowTopLine}>
-                          <Text style={styles.macroRowLabel}>{item.label}</Text>
-                          <Text style={styles.macroRowGoal}>
-                            {item.consumed}
-                            <Text style={styles.macroRowGoal}> / {item.goal ?? '—'} {item.unit}</Text>
-                          </Text>
-                        </View>
-                        <View style={styles.macroTrack}>
-                          <View style={[styles.macroTrackFill, { width: `${pct * 100}%` }]} />
-                        </View>
+                      <Text style={styles.macroTileTitle}>{item.label}</Text>
+                      <Text
+                        style={[styles.macroTileValue, { color: item.color }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                      >
+                        {formatCompactNumber(item.consumed)}/{formatCompactNumber(item.goal)}
+                      </Text>
+                      <Text style={styles.macroTileUnit}>{item.unit}</Text>
+
+                      <View style={styles.macroTileTrack}>
+                        <View
+                          style={[
+                            styles.macroTileTrackFill,
+                            { width: `${pct * 100}%`, backgroundColor: item.color },
+                          ]}
+                        />
                       </View>
                     </View>
                   );
                 })}
-
-                {/* Buttons */}
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => navigation.navigate('UpdateMacrosPlan')}
-                  >
-                    <Ionicons name="options-outline" size={18} color= '#0E0E12' />
-                    <Text style={styles.actionText}>Edit Plan</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.actionButtonOutline}
-                    onPress={() => navigation.navigate('RewardSystemScreen')}
-                  >
-                    <Ionicons name="options-outline" size={18} color={ACCENT} />
-                    <Text style={styles.actionTextOutline}>Reward</Text>
-                  </TouchableOpacity>
-                </View>
-
               </View>
+
+              {/* Buttons */}
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => navigation.navigate('UpdateMacrosPlan')}
+                >
+                  <Ionicons name="options-outline" size={18} color= '#0E0E12' />
+                  <Text style={styles.actionText}>Edit Plan</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButtonOutline}
+                  onPress={() => navigation.navigate('RewardSystemScreen')}
+                >
+                  <Ionicons name="options-outline" size={18} color={ACCENT} />
+                  <Text style={styles.actionTextOutline}>Reward</Text>
+                </TouchableOpacity>
+              </View>
+
             </View>
 
           </View>
@@ -711,11 +866,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.75,
     shadowRadius: 10,
     elevation: 6,
-  
+    marginTop: 50,
   },
   cardContainerAltColor: {
     backgroundColor: CARD_BG,
-    borderRadius: 10,
+    borderRadius: 18,
     padding: 16,
     width: width * 0.95,
     alignSelf: 'center',
@@ -759,66 +914,80 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
 
-  // ── Compact macro rows (replaces the 2x2 tile grid) ──
-  macroList: {
+  // ── Macro grid — icon-chip tiles (replaces the compact rows) ──
+  macroGrid: {
+    flexDirection: 'row',
     gap: 10,
   },
-  macroRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  macroTile: {
+    flex: 1,
     backgroundColor: MACRO_IN,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 4,
   },
-  macroRowIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+  macroTileIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-
+    marginBottom: 4,
   },
-  macroTrackFill: {
-    height: '100%',
-    borderRadius: 3,
-
+  macroTileTitle: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  macroRowBody: {
-    flex: 1,
+  macroTileValue: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: -0.2,
   },
-  macroRowTopLine: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+  macroTileUnit: {
+    color: '#A0A0BC',
+    fontSize: 9,
+    fontWeight: '600',
     marginBottom: 6,
   },
-  macroRowLabel: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.4,
-  },
-  macroRowValue: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  macroRowGoal: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  macroTrack: {
-    height: 5,
+  macroTileTrack: {
+    width: '100%',
+    height: 4,
     borderRadius: 3,
     backgroundColor: '#1A1A22',
     overflow: 'hidden',
   },
-  
+  macroTileTrackFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ACCENT,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 5,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  actionText: {
+    color: '#0E0E12',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
 
   actionButtonOutline: {
     flex: 1,
@@ -898,5 +1067,50 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  caloriesBar: {
+    backgroundColor: MACRO_IN,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 14,
+    marginBottom: 10,
+  },
+  caloriesBarTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  caloriesBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  caloriesBarIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  caloriesBarLabel: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  caloriesBarValue: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  caloriesBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#1A1A22',
+    overflow: 'hidden',
+  },
+  caloriesBarTrackFill: {
+    height: '100%',
+    borderRadius: 3,
   },
 });

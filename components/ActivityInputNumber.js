@@ -23,12 +23,12 @@ import React, {
   import { getISOWeekKey } from '../utils/weeklyKeyCreate';
   
   
-  const ActivityInputNumber = ({ icon, iconColor, label, value, onChange }) => {
+  const ActivityInputNumber = ({ icon, icon_color, label, value, onChange }) => {
   
     return (
       <View style={styles.inputWrapper}>
         <View style={styles.inputLabel}>
-          <Ionicons name={icon} size={16} color={iconColor} />
+          <Ionicons name={icon} size={16} color={icon_color} />
           <Text style={styles.label}>{label}</Text>
         </View>
         <TextInput
