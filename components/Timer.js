@@ -1,33 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import GradientBackground from '../lib/assets/Card';
+import { Ionicons } from '@expo/vector-icons';
 
-const Timer = () => {
-  const [seconds, setSeconds] = useState(0);
-  const [isActive, setIsActive] = useState(false);
+// Workout timer for Workout Mode — shows a Start button, which turns into
+// the workout's elapsed time (counting up) once started.
+// Controlled by the parent: `startedAt` (ms timestamp, or null) is when the
+// workout began — time is worked out from it, so it stays right after leaving
+// the screen. `onStart` is called when Start is pressed.
+const Timer = ({ startedAt, onStart }) => {
+  const isActive = !!startedAt;
+  const elapsed = () => (startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0);
+  const [seconds, setSeconds] = useState(elapsed);
   const intervalRef = useRef(null);
 
   useEffect(() => {
+    setSeconds(elapsed());
     if (isActive) {
-      intervalRef.current = setInterval(() => {
-        setSeconds((prev) => prev + 1);
-      }, 1000);
-    } else if (!isActive && intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+      intervalRef.current = setInterval(() => setSeconds(elapsed()), 1000);
     }
 
     return () => clearInterval(intervalRef.current);
-  }, [isActive]);
-
-  const toggleTimer = () => setIsActive(!isActive);
-
-  const resetTimer = () => {
-    setSeconds(0);
-    setIsActive(false);
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  };
+  }, [startedAt]);
 
   const formatTime = (time) => {
     const mins = Math.floor(time / 60);
@@ -35,63 +28,54 @@ const Timer = () => {
     return `${mins < 10 ? '0' + mins : mins}:${secs < 10 ? '0' + secs : secs}`;
   };
 
+  if (!isActive) {
+    return (
+      <TouchableOpacity style={[styles.pill, styles.startPill]} onPress={onStart} activeOpacity={0.8}>
+        <Ionicons name="play" size={14} color={WHITE} />
+        <Text style={styles.startText}>Start</Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <View style={styles.timerWrapper}>
-    
-        <Text style={styles.timeText}>{formatTime(seconds)}</Text>
-
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: isActive ? '#EF4444' : '#22C55E' }]}
-          onPress={toggleTimer}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.buttonText}>{isActive ? 'Pause' : 'Start'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.button, styles.resetButton]} onPress={resetTimer} activeOpacity={0.8}>
-          <Text style={styles.buttonText}>Reset</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.pill}>
+      <Ionicons name="time-outline" size={14} color={ACCENT} />
+      <Text style={styles.timeText}>{formatTime(seconds)}</Text>
     </View>
   );
 };
 
 export default Timer;
 
+const ACCENT = '#228B22';
+const WHITE = '#FFFFFF';
+
 const styles = StyleSheet.create({
-  timerWrapper: {
+  pill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 10,
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: 'rgba(44,44,47,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  gradientBox: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignSelf: 'center',
+  startPill: {
+    backgroundColor: ACCENT + 'CC',
+    borderColor: ACCENT,
+  },
+  startText: {
+    color: WHITE,
+    fontSize: 14,
+    fontWeight: '800',
   },
   timeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 10,
-  },
-  button: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  resetButton: {
-    backgroundColor: '#3B82F6',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: WHITE,
     fontSize: 16,
+    fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
 });

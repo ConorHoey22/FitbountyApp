@@ -1,7 +1,8 @@
 
+import ScreenBackground from '../components/ScreenBackground';
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,10 +11,14 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import useTabBarSpace from '../utils/useTabBarSpace';
+import { getActiveWorkout, clearActiveWorkout } from '../utils/activeWorkout';
+import { getCustomWorkouts, deleteCustomWorkout, MAX_CUSTOM_WORKOUTS } from '../utils/customWorkouts';
 
 // ── Icon / colour helpers ─────────────────────────────────────────────────────
 const WORKOUT_STYLES = [
@@ -28,6 +33,8 @@ const WORKOUT_STYLES = [
 const styleFor = (index) => WORKOUT_STYLES[index % WORKOUT_STYLES.length];
 
 export default function WorkoutsScreen() {
+  const tabSpace = useTabBarSpace(); // room for the floating tab bar
+
   const navigation = useNavigation();
 
   const [workoutNames, setWorkoutNames]     = useState([]);
@@ -36,7 +43,80 @@ export default function WorkoutsScreen() {
   const [loading, setLoading]               = useState(false);
   const [error, setError]                   = useState(null);
 
+  const [customWorkouts, setCustomWorkouts] = useState([]); // user's own workouts (utils/customWorkouts)
+
   useEffect(() => { fetchWorkoutNames(); }, []);
+
+  // Custom workouts — reloaded on focus (one may have just been created)
+  const loadCustomWorkouts = async () => {
+    try {
+      setCustomWorkouts(await getCustomWorkouts());
+    } catch (e) {
+      console.error('Custom workouts load error:', e.message);
+    }
+  };
+  useFocusEffect(useCallback(() => { loadCustomWorkouts(); }, []));
+
+  // + → Create Workout, unless the free limit is reached
+  const handleAddPress = () => {
+    if (customWorkouts.length >= MAX_CUSTOM_WORKOUTS) {
+      Alert.alert(
+        'Workout limit reached',
+        `You can save up to ${MAX_CUSTOM_WORKOUTS} custom workouts. Delete one to create a new one.`
+      );
+      return;
+    }
+    navigation.navigate('CreateWorkoutScreen', {
+      takenNames: [...workoutNames, ...customWorkouts.map((w) => w.workout_name)],
+    });
+  };
+
+  const selectCustomWorkout = (workout) => {
+    setError(null);
+    setSelectedWorkout(workout.workout_name);
+    setExercises(workout.exercises);
+  };
+
+  const handleDeleteCustom = (workout) => {
+    Alert.alert(
+      'Delete workout?',
+      `"${workout.workout_name}" will be deleted. Your logged sets and PRs are kept.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCustomWorkout(workout.id);
+              // If it was the workout in progress, drop that too
+              const session = await getActiveWorkout();
+              if (session?.workoutName === workout.workout_name) await clearActiveWorkout();
+              await loadCustomWorkouts();
+            } catch (e) {
+              Alert.alert('Could not delete workout', e.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // A workout is in progress → skip the list and go straight back to Workout Mode
+  useFocusEffect(
+    useCallback(() => {
+      getActiveWorkout()
+        .then((session) => {
+          if (session?.workoutName) {
+            navigation.navigate('WorkoutModeScreen', {
+              workoutName: session.workoutName,
+              exercises: session.exercises ?? [],
+            });
+          }
+        })
+        .catch((err) => console.error('Active workout load error:', err.message));
+    }, [])
+  );
 
   async function fetchWorkoutNames() {
     setLoading(true);
@@ -85,10 +165,7 @@ export default function WorkoutsScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
-      {/* Background blobs */}
-      <View style={styles.blobTopRight} />
-      <View style={styles.blobBottomLeft} />
+      <ScreenBackground />
 
       <View style={styles.content}>
 
@@ -97,7 +174,7 @@ export default function WorkoutsScreen() {
           <View style={styles.headerTextContainer}>
             {selectedWorkout ? (
               <>
-                <TouchableOpacity onPress={goBack} style={styles.backRow}>
+                <TouchableOpacity onPress={goBack} style={styles.backRow} activeOpacity={0.75} hitSlop={8}>
                   <Ionicons name="chevron-back-outline" size={16} color={ACCENT} />
                   <Text style={styles.backText}>All Workouts</Text>
                 </TouchableOpacity>
@@ -118,7 +195,7 @@ export default function WorkoutsScreen() {
           </View>
 
           {!selectedWorkout && (
-            <TouchableOpacity style={styles.addButton} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={handleAddPress}>
               <Ionicons name="add-outline" size={22} color="#0E0E12" />
             </TouchableOpacity>
           )}
@@ -141,9 +218,49 @@ export default function WorkoutsScreen() {
         {!loading && !selectedWorkout && (
           <ScrollView
             style={styles.list}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + tabSpace }]}
             showsVerticalScrollIndicator={false}
           >
+            {/* ── My Workouts (custom) ── */}
+            {customWorkouts.length > 0 && (
+              <Text style={styles.sectionLabel}>MY WORKOUTS</Text>
+            )}
+            {customWorkouts.map((workout, index) => {
+              const { icon, color } = styleFor(index);
+              return (
+                <TouchableOpacity
+                  key={workout.id}
+                  onPress={() => selectCustomWorkout(workout)}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.card}>
+                    <View style={[styles.iconContainer, { borderColor: color + '44', backgroundColor: color + '14' }]}>
+                      <Ionicons name={icon} size={24} color={color} />
+                    </View>
+
+                    <View style={styles.cardText}>
+                      <Text style={styles.cardTitle}>{workout.workout_name}</Text>
+                      <Text style={styles.cardSub}>
+                        {workout.exercises.length} exercise{workout.exercises.length !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.chevronWrap, styles.deleteWrap]}
+                      onPress={() => handleDeleteCustom(workout)}
+                      hitSlop={8}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#FF4D6D" />
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            {customWorkouts.length > 0 && workoutNames.length > 0 && (
+              <Text style={styles.sectionLabel}>FITBOUNTY WORKOUTS</Text>
+            )}
+
             {workoutNames.map((name, index) => {
               const { icon, color } = styleFor(index);
               return (
@@ -180,7 +297,7 @@ export default function WorkoutsScreen() {
         {!loading && selectedWorkout && (
           <ScrollView
             style={styles.list}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + tabSpace }]}
             showsVerticalScrollIndicator={false}
           >
             {exercises.map((ex, index) => (
@@ -320,15 +437,24 @@ const styles = StyleSheet.create({
     color: '#A0A0BC',
     fontWeight: '500',
   },
+  // "All Workouts" — pill button
   backRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    marginBottom: 8,
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginBottom: 12,
+    backgroundColor: SURFACE2,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingLeft: 10,
+    paddingRight: 14,
   },
   backText: {
     color: ACCENT,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
   addButton: {
@@ -406,6 +532,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#A0A0BC',
     fontWeight: '500',
+  },
+  deleteWrap: {
+    marginLeft: 8,
+    borderColor: '#FF4D6D55',
+  },
+  sectionLabel: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    marginTop: 4,
+    marginBottom: 10,
   },
   chevronWrap: {
     width: 28,

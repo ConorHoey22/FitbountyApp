@@ -10,17 +10,17 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Platform,
+  Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
-import { getISOWeekKey } from '../utils/weeklyKeyCreate';
-import ActivityInputNumberPad from './ActivityInputNumber';
+import { M, modalStyles as ms } from './modalTheme';
+import { font } from '../utils/fonts';
 import { awardXP, removeXP } from '../lib/rewards';
+import { getActivityDateKey, getActivityDay, removeActivityDay, saveActivityDay } from '../utils/activityHistory';
 
 
 
-const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
+const AddTodayPlanModal = ({ visible, onClose, onSave, onLevelUp }) => {
   const [cardioInputValue, setCardioInputValue] = useState('');
   const [stepsInputValue, setStepsInputValue] = useState('');
   const [workoutsInputValue, setWorkoutsInputValue] = useState('');
@@ -69,83 +69,23 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
     }
   }, [visible]);
 
+  // Today's totals come from today's daily_activity row
   const loadCurrentProgress = async () => {
     try {
-      const saved = await AsyncStorage.getItem('todayChecks');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const today = new Date().toISOString().split('T')[0];
-
-        if (parsed.date !== today) {
-          await AsyncStorage.removeItem('todayChecks');
-          setCurrentCardio(0);
-          setCurrentSteps(0);
-          setCurrentWorkouts(0);
-        } else {
-          setCurrentCardio(Number(parsed.cardio) || 0);
-          setCurrentSteps(Number(parsed.steps) || 0);
-          setCurrentWorkouts(Number(parsed.workouts) || 0);
-        }
-      }
+      const today = await getActivityDay();
+      setCurrentCardio(today.cardio);
+      setCurrentSteps(today.steps);
+      setCurrentWorkouts(today.workouts);
     } catch (error) {
       console.error('Error loading progress:', error);
     }
   };
 
-  const pushTotalsToSupabase = async (parsed) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      const workoutsCompleted = Number(parsed.workouts) || 0;
-      const cardioMinutes = Number(parsed.cardio) || 0;
-      const stepsCompleted = Number(parsed.steps) || 0;
-
-      if (workoutsCompleted === 0 && cardioMinutes === 0 && stepsCompleted === 0 ) return;
-
-      const { data: profile, error: fetchError } = await supabase
-        .from('userProfiles')
-        .select('weeklyFitBKey, weeklyWorkoutCount, weeklyCardioCount,dailyStepCount')
-        .eq('id', session.user.id)
-        .single();
-
-      if (fetchError) {
-        console.error('Fetch profile error:', fetchError.message);
-        return;
-      }
-
-      const currentWeekKey = getISOWeekKey(new Date());
-      const isSameWeek = profile?.weeklyFitBKey === currentWeekKey;
-
-      const newWorkoutCount = isSameWeek
-        ? (profile.weeklyWorkoutCount || 0) + workoutsCompleted
-        : workoutsCompleted;
-
-      const newCardioCount = isSameWeek
-        ? (profile.weeklyCardioCount || 0) + cardioMinutes
-        : cardioMinutes;
-
-      const newStepCount = isSameWeek
-        ? (profile.weeklyStepCount || 0) + stepsCompleted
-        : stepsCompleted;
-
-      const { error: updateError } = await supabase
-        .from('userProfiles')
-        .update({
-          weeklyFitBKey: currentWeekKey,
-          weeklyWorkoutCount: newWorkoutCount,
-          weeklyCardioCount: newCardioCount,
-          dailyStepCount: newStepCount
-        })
-        .eq('id', session.user.id);
-
-      if (updateError) {
-        console.error('Update profile error:', updateError.message);
-      } else {
-        console.log('Pushed to Supabase:', { newWorkoutCount, newCardioCount, currentWeekKey, newStepCount });
-      }
-    } catch (err) {
-      console.error('Error pushing totals to Supabase:', err.message);
+  // If any XP award reached a new level, tell the parent to show the level-up popup
+  const notifyLevelUp = (awardResults) => {
+    const levelUps = awardResults.filter((r) => r?.leveledUp);
+    if (levelUps.length && onLevelUp) {
+      onLevelUp(Math.max(...levelUps.map((r) => r.newLevel)));
     }
   };
 
@@ -159,15 +99,13 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
       const newSteps = currentSteps + stepsToAdd;
       const newWorkouts = currentWorkouts + workoutsToAdd;
 
-      const todayChecks = {
-        date: new Date().toISOString().split('T')[0],
-        cardio: newCardio,
+      // Overwrite today's row with the new day totals
+      await saveActivityDay({
+        date: getActivityDateKey(),
         steps: newSteps,
-        gym: newWorkouts > 0,
+        cardio: newCardio,
         workouts: newWorkouts,
-      };
-
-      await AsyncStorage.setItem('todayChecks', JSON.stringify(todayChecks));
+      });
       setCurrentCardio(newCardio);
       setCurrentSteps(newSteps);
       setCurrentWorkouts(newWorkouts);
@@ -175,41 +113,37 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
       setStepsInputValue('');
       setWorkoutsInputValue('');
 
-      await pushTotalsToSupabase({
-        workouts: workoutsToAdd,
-        cardio: cardioToAdd,
-        steps: stepsToAdd
-      });
-
       // This will add XP 
+      const awardResults = [];
+
       if (cardioToAdd)
       {
-        const resultCardio = await awardXP('cardio');
-
+        awardResults.push(await awardXP('cardio'));
       }
 
       if(workoutsToAdd)
       {
-        const resultWorkout = await awardXP('workout');
-
+        awardResults.push(await awardXP('workout'));
       }
 
       if(stepsToAdd)
       {
-        const resultSteps = await awardXP('steps');
+        awardResults.push(await awardXP('steps'));
       }
+
+      notifyLevelUp(awardResults);
 
 
       if (onSave) onSave();
       onClose();
     } catch (error) {
       console.error('Error saving progress:', error);
+      Alert.alert('Unable to save activity', 'Please try again.');
     }
   };
 
   // Edit mode: inputs hold the CORRECT total for today, not an amount to add.
-  // We diff against what was previously stored to correct Supabase totals
-  // and only award/remove XP when an activity toggles between
+  // Today's row is overwritten, and XP is only awarded/removed when an activity toggles between
   // logged (>0) and not-logged (0), since XP is flat-per-activity, not
   // proportional to the amount entered.
   const handleEditUpdate = async () => {
@@ -218,45 +152,36 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
       const newSteps = parseInt(stepsInputValue) || 0;
       const newWorkouts = parseInt(workoutsInputValue) || 0;
 
-      const cardioDiff = newCardio - currentCardio;
-      const stepsDiff = newSteps - currentSteps;
-      const workoutsDiff = newWorkouts - currentWorkouts;
-
-      const todayChecks = {
-        date: new Date().toISOString().split('T')[0],
-        cardio: newCardio,
+      // Overwrite today's row — weekly totals are summed from daily rows, so no diffs needed
+      await saveActivityDay({
+        date: getActivityDateKey(),
         steps: newSteps,
-        gym: newWorkouts > 0,
+        cardio: newCardio,
         workouts: newWorkouts,
-      };
-
-      await AsyncStorage.setItem('todayChecks', JSON.stringify(todayChecks));
-
-      // Push only the difference so weekly Supabase totals stay accurate
-      await pushTotalsToSupabase({
-        workouts: workoutsDiff,
-        cardio: cardioDiff,
-        steps: stepsDiff,
       });
 
       // Reverse or award XP only when an activity toggles logged/not-logged
+      const awardResults = [];
+
       if (currentCardio === 0 && newCardio > 0) {
-        await awardXP('cardio');
+        awardResults.push(await awardXP('cardio'));
       } else if (currentCardio > 0 && newCardio === 0) {
         await removeXP('cardio');
       }
 
       if (currentWorkouts === 0 && newWorkouts > 0) {
-        await awardXP('workout');
+        awardResults.push(await awardXP('workout'));
       } else if (currentWorkouts > 0 && newWorkouts === 0) {
         await removeXP('workout');
       }
 
       if (currentSteps === 0 && newSteps > 0) {
-        await awardXP('steps');
+        awardResults.push(await awardXP('steps'));
       } else if (currentSteps > 0 && newSteps === 0) {
         await removeXP('steps');
       }
+
+      notifyLevelUp(awardResults);
 
       setCurrentCardio(newCardio);
       setCurrentSteps(newSteps);
@@ -270,6 +195,7 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
       onClose();
     } catch (error) {
       console.error('Error editing progress:', error);
+      Alert.alert('Unable to save activity', 'Please try again.');
     }
   };
 
@@ -288,111 +214,119 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
   };
 
   const handleReset = async () => {
-    await AsyncStorage.removeItem('todayChecks');
-    setCurrentCardio(0);
-    setCurrentSteps(0);
-    setCurrentWorkouts(0);
-    if (onSave) onSave();
+    try {
+      await removeActivityDay(getActivityDateKey());
+      setCurrentCardio(0);
+      setCurrentSteps(0);
+      setCurrentWorkouts(0);
+      if (onSave) onSave();
+    } catch (error) {
+      console.error('Error resetting progress:', error);
+      Alert.alert('Unable to reset activity', 'Please try again.');
+    }
   };
+
+  const todaySoFar = [
+    { key: 'cardio', label: 'Cardio', value: currentCardio, color: CARDIO_COLOR },
+    { key: 'steps', label: 'Steps', value: currentSteps, color: STEPS_COLOR },
+    { key: 'workouts', label: 'Workouts', value: currentWorkouts, color: WORKOUT_COLOR },
+  ];
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.overlay}>
-          <View style={styles.modalContainer}>
+        <View style={ms.overlay}>
+          <View style={ms.card}>
 
             {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>ACTIVITY</Text>
+            <View style={ms.header}>
+              <View style={ms.headerLeft}>
+                <View style={ms.badge}>
+                  <Text style={ms.badgeText}>ACTIVITY</Text>
                 </View>
-                <Text style={styles.title}>{isEditMode ? 'Edit Progress' : 'Update Progress'}</Text>
+                <Text style={ms.title}>{isEditMode ? 'Edit Progress' : 'Update Progress'}</Text>
               </View>
-              <Pressable onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={20} color="#A0A0BC" />
+              <Pressable onPress={onClose} style={ms.closeBtn} hitSlop={10}>
+                <Ionicons name="close" size={20} color={M.INK} />
               </Pressable>
             </View>
 
-            <Text style={styles.subtitle}>
+            <Text style={ms.subtitle}>
               {isEditMode
                 ? 'Correct today\'s totals below — this replaces the value, it doesn\'t add to it.'
                 : 'Log your activity throughout the day · Smart watch integration coming soon'}
             </Text>
 
-            {/* Current Progress */}
-            <View style={styles.progressCard}>
-              <View style={styles.progressHeaderRow}>
-                <Text style={styles.progressTitle}>Today so far</Text>
+            {/* Today so far */}
+            <View style={ms.infoCard}>
+              <View style={styles.infoHeaderRow}>
+                <Text style={[ms.infoTitle, { marginBottom: 0 }]}>Today so far</Text>
                 {!isEditMode && (
                   <TouchableOpacity onPress={enterEditMode} style={styles.editBtn}>
-                    <Ionicons name="create-outline" size={14} color={ACCENT} />
+                    <Ionicons name="create" size={13} color={M.WHITE} />
                     <Text style={styles.editBtnText}>Edit</Text>
                   </TouchableOpacity>
                 )}
               </View>
-              <View style={styles.progressRow}>
-                <View style={styles.progressItem}>
-                  <Ionicons name="bicycle-outline" size={18} color={ACCENT} />
-                  <Text style={styles.progressValue}>{currentCardio}</Text>
-                  <Text style={styles.progressLabel}>Cardio</Text>
-                </View>
-                <View style={styles.progressDivider} />
-                <View style={styles.progressItem}>
-                  <Ionicons name="footsteps-outline" size={18} color="#A49BFF" />
-                  <Text style={styles.progressValue}>{currentSteps}</Text>
-                  <Text style={styles.progressLabel}>Steps</Text>
-                </View>
-                <View style={styles.progressDivider} />
-                <View style={styles.progressItem}>
-                  <Ionicons name="barbell-outline" size={18} color="#FFA940" />
-                  <Text style={styles.progressValue}>{currentWorkouts}</Text>
-                  <Text style={styles.progressLabel}>Workouts</Text>
-                </View>
+              <View style={styles.infoRow}>
+                {todaySoFar.map((item, index) => (
+                  <React.Fragment key={item.key}>
+                    {index > 0 && <View style={styles.infoDivider} />}
+                    <View style={styles.infoItem}>
+                      <Text style={ms.infoValue}>{item.value}</Text>
+                      <View style={styles.infoLabelRow}>
+                        <View style={[styles.infoDot, { backgroundColor: item.color }]} />
+                        <Text style={ms.infoLabel}>{item.label}</Text>
+                      </View>
+                    </View>
+                  </React.Fragment>
+                ))}
               </View>
             </View>
 
             {/* Input Fields */}
             <View style={styles.inputGroup}>
-              <ActivityInputNumberPad
-                icon="bicycle-outline"
-                iconColor={ACCENT}
-                label={isEditMode ? 'Cardio total (minutes)' : 'Cardio (minutes)'}
+              <ActivityRow
+                icon="bicycle"
+                color={CARDIO_COLOR}
+                label={isEditMode ? 'Cardio total' : 'Cardio'}
+                unit="min"
                 value={cardioInputValue}
                 onChange={setCardioInputValue}
               />
-              <ActivityInputNumberPad
-                icon="footsteps-outline"
-                iconColor="#A49BFF"
+              <ActivityRow
+                icon="footsteps"
+                color={STEPS_COLOR}
                 label={isEditMode ? 'Steps total' : 'Steps'}
+                unit="steps"
                 value={stepsInputValue}
                 onChange={setStepsInputValue}
               />
-              <ActivityInputNumberPad
-                icon="barbell-outline"
-                iconColor="#FFA940"
+              <ActivityRow
+                icon="barbell"
+                color={WORKOUT_COLOR}
                 label={isEditMode ? 'Workouts total' : 'Workouts'}
+                unit=""
                 value={workoutsInputValue}
-                placeholder='test'
                 onChange={setWorkoutsInputValue}
               />
             </View>
 
             {/* Buttons */}
             {isEditMode ? (
-              <>
-                <TouchableOpacity style={styles.saveButton} onPress={handleEditUpdate}>
-                  <Ionicons name="checkmark-outline" size={18} color="#ffffff" />
-                  <Text style={styles.saveButtonText}>SAVE CORRECTION</Text>
+              <View style={styles.buttonStack}>
+                <TouchableOpacity style={ms.saveButton} onPress={handleEditUpdate} activeOpacity={0.85}>
+                  <Text style={ms.saveButtonText}>Save Correction</Text>
+                  <Ionicons name="checkmark" size={18} color={M.WHITE} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.resetButton} onPress={cancelEditMode}>
-                  <Text style={styles.resetButtonText}>Cancel</Text>
+                <TouchableOpacity style={ms.secondaryButton} onPress={cancelEditMode} activeOpacity={0.85}>
+                  <Text style={ms.secondaryButtonText}>Cancel</Text>
                 </TouchableOpacity>
-              </>
+              </View>
             ) : (
-              <TouchableOpacity style={styles.saveButton} onPress={handleUpdate}>
-                <Ionicons name="checkmark-outline" size={18} color="#ffffff" />
-                <Text style={styles.saveButtonText}>SAVE PROGRESS</Text>
+              <TouchableOpacity style={ms.saveButton} onPress={handleUpdate} activeOpacity={0.85}>
+                <Text style={ms.saveButtonText}>Save Progress</Text>
+                <Ionicons name="checkmark" size={18} color={M.WHITE} />
               </TouchableOpacity>
             )}
 
@@ -401,9 +335,9 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
       </TouchableWithoutFeedback>
 
       {keyboardVisible && (
-        <View style={[styles.accessoryBar, { bottom: keyboardHeight }]}>
+        <View style={[ms.accessoryBar, { bottom: keyboardHeight }]}>
           <TouchableOpacity onPress={Keyboard.dismiss}>
-            <Text style={styles.accessoryDoneText}>Done</Text>
+            <Text style={ms.accessoryDoneText}>Done</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -411,237 +345,108 @@ const AddTodayPlanModal = ({ visible, onClose, onSave }) => {
   );
 };
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
-const ACCENT   = '#C6F135';
-const BG_MODAL = '#1A1A26';
-const SURFACE  = '#22222E';
-const SURFACE2 = '#2C2C3C';
-const BORDER   = '#42425A';
-const ACCENT2   = '#2563EB';
+// One row per activity — coloured icon square, label, number input + unit (matches Add Food)
+const ActivityRow = ({ icon, color, label, unit, value, onChange }) => {
+  const [focused, setFocused] = useState(false);
 
+  return (
+    <View style={[ms.inputRow, focused && ms.inputRowFocused]}>
+      <View style={styles.rowLeft}>
+        <View style={[ms.inputIcon, { backgroundColor: color }]}>
+          <Ionicons name={icon} size={16} color={M.WHITE} />
+        </View>
+        <Text style={ms.inputLabel}>{label}</Text>
+      </View>
+      <View style={styles.rowRight}>
+        <TextInput
+          style={ms.inputNumber}
+          placeholder="0"
+          placeholderTextColor={M.PLACEHOLDER}
+          keyboardType="number-pad"
+          value={value}
+          onChangeText={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+        <Text style={styles.unit}>{unit}</Text>
+      </View>
+    </View>
+  );
+};
 
+// Goal colours — same as Home
+const CARDIO_COLOR = '#F43F5E';
+const STEPS_COLOR = '#06B6D4';
+const WORKOUT_COLOR = '#F59E0B';
+
+// Layout-only styles; colours/type come from modalTheme
 const styles = StyleSheet.create({
-  accessoryBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignItems: 'flex-end',
-  },
-  accessoryDoneText: {
-    backgroundColor: '#22222E',
-    borderWidth: 1,
-    borderRadius: 41,
-    borderColor: '#C6F135',
-    padding: 10,
-    color: '#C6F135',
-    fontSize: 16,
-    fontWeight: '700',
-    overflow: 'hidden',
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: '88%',
-    backgroundColor: BG_MODAL,
-    borderRadius: 22,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: BORDER,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  headerLeft: {
-    gap: 6,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: ACCENT + '22',
-    borderWidth: 1,
-    borderColor: ACCENT + '55',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  badgeText: {
-    color: ACCENT,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: SURFACE2,
-    borderWidth: 1,
-    borderColor: BORDER,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#ffffff',
-    marginBottom: 18,
-    lineHeight: 17,
-  },
-  progressCard: {
-    backgroundColor: SURFACE,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 14,
-    marginBottom: 20,
-  },
-  progressHeaderRow: {
+  infoHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  progressTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    marginBottom: 10,
   },
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: ACCENT + '18',
-    borderWidth: 1,
-    borderColor: ACCENT + '44',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
   editBtnText: {
-    color: ACCENT,
+    color: M.WHITE,
     fontSize: 11,
-    fontWeight: '700',
+    ...font('700'),
   },
-  progressRow: {
+  infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
   },
-  progressItem: {
+  infoItem: {
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
-  progressValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+  infoLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  progressLabel: {
-    fontSize: 11,
-    color: '#A0A0BC',
-    fontWeight: '500',
+  infoDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  progressDivider: {
+  infoDivider: {
     width: 1,
-    height: 36,
-    backgroundColor: BORDER,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   inputGroup: {
-    gap: 12,
+    gap: 10,
     marginBottom: 20,
   },
-  inputWrapper: {
+  rowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: SURFACE,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 10,
   },
-  inputLabel: {
+  rowRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#DDDDF0',
+  unit: {
+    width: 36,
+    fontSize: 12,
+    ...font('600'),
+    color: M.MUTED,
   },
-  input: {
-    width: 72,
-    backgroundColor: SURFACE2,
-    borderWidth: 1.5,
-    borderColor: BORDER,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    textAlign: 'center',
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: ACCENT2,
-    paddingVertical: 14,
-    borderRadius: 13,
-    gap: 8,
-    marginBottom: 10,
-    shadowColor: ACCENT2,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  saveButtonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    paddingVertical: 11,
-    borderRadius: 13,
-    borderWidth: 1.5,
-    borderColor: '#FF4D6D44',
-    gap: 7,
-  },
-  resetButtonText: {
-    color: '#FF4D6D',
-    fontSize: 13,
-    fontWeight: '700',
+  buttonStack: {
+    gap: 10,
   },
 });
 

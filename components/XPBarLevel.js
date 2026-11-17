@@ -1,25 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 import { getLevelProgress } from '../lib/xpRewardConfig';
-import Divider from './Divider';
+import { font } from '../utils/fonts';
 
-const theme = {
-bg: '#111827',
-surface: '#1E293B',
-surfaceAlt: '#0F172A',
-surfaceLight: '#F1F5F9',
-border: '#334155',
-text: '#E5E7EB',
-textMuted: '#9CA3AF',
-textOnLight: '#0F172A',
-primary: '#3B82F6',
-success: '#22C55E',
-warning: '#F59E0B',
-color : '#FF8A00',     // Default start color (Calories orange)
-endColor : '#FFB84D'
-};
+const SIZE = 52;
+const STROKE = 5;
+const RADIUS = (SIZE - STROKE) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const LEVEL_FONT_SIZE = 20;
 
 export default function XPBarLevel({ refreshKey }) {
   const [currentXP, setCurrentXP] = useState(0);
@@ -58,112 +48,79 @@ export default function XPBarLevel({ refreshKey }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.macroLabel}>
-        LEVEL {level}
-      </Text>
-      <Text style={styles.badgeText}> {currentXP} <Text style={styles.secondaryTextColor}>/ {levelXP} XP </Text> </Text>
-
-      <View style={styles.barBackground}>
-
-        {/* Progress fill */}
-        <View style={[styles.barFillContainer, { flex: progress }]}>
-          <LinearGradient
-            colors={['#FF7A00', '#FFD54F']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.barFillGradient}
+      <View style={styles.ring}>
+        <Svg width={SIZE} height={SIZE}>
+          <Circle
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={RADIUS}
+            stroke={TRACK}
+            strokeWidth={STROKE}
+            fill={WHITE}
           />
-        </View>
-
-        {/* Remaining bar */}
-        <View style={[styles.remainingBar, { flex: 1 - progress }]} />
+          <Circle
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={RADIUS}
+            stroke={BLUE}
+            strokeWidth={STROKE}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={CIRCUMFERENCE}
+            strokeDashoffset={CIRCUMFERENCE * (1 - progress)}
+            // start the arc at 12 o'clock
+            transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+          />
+          <SvgText
+            x={SIZE / 2}
+            // nudge down ~1/3 of the font size so the digits sit visually centred
+            y={SIZE / 2 + LEVEL_FONT_SIZE * 0.35}
+            textAnchor="middle"
+            fontSize={LEVEL_FONT_SIZE}
+            fontWeight="800"
+            fill={INK}
+          >
+            {level}
+          </SvgText>
+        </Svg>
       </View>
+
+      <Text style={styles.xpText}>
+        {currentXP}
+        <Text style={styles.xpMuted}>/{levelXP} XP</Text>
+      </Text>
     </View>
   );
 }
 
-
-// ─── Palette ──────────────────────────────────────────────────────────────────
-const ACCENT    = '#C6F135';   // electric lime
+const INK = '#111111';
+const WHITE = '#FFFFFF';
+const MUTED = '#8C8C8C';
+const BLUE = '#ff7722';
+const TRACK = '#5A5A5E';   // remaining XP — solid grey so it shows on dark backgrounds
 
 const styles = StyleSheet.create({
-
-barBackground: {
-flexDirection: 'row',
-height: 14,
-width: '100%',
-backgroundColor: '#1E1E1E',
-borderRadius: 999,
-overflow: 'hidden',
-shadowColor: '#000',
-shadowOffset: { width: 0, height: 3 },
-shadowOpacity: 0.2,
-shadowRadius: 4,
-elevation: 3,
-marginTop:10
-    },
-barFillContainer: {
-borderRadius: 999,
-overflow: 'hidden',
-    },
-barFillGradient: {
-flex: 1,
-borderRadius: 999,
-    },
-remainingBar: {
-backgroundColor: '#2C2C2C',
-    },
-
-container: {
-marginTop: 10,
-marginBottom: 10,
-alignItems: 'center',
+  container: {
+    alignItems: 'center',
   },
-title: {
-fontSize: 15,
-fontWeight: '800',
-marginBottom: 6,
-color: theme.text,
-textAlign: 'center',
+  ring: {
+    width: SIZE,
+    height: SIZE,
+    borderRadius: SIZE / 2,
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-xpText: {
-color: theme.textMuted,
+  xpText: {
+    marginTop: 4,
+    color: WHITE,
+    fontSize: 11,
+    ...font('800'),
   },
-boldBlackText:
-  {
-color: 'black', fontSize: 16, fontWeight: '700'
+  xpMuted: {
+    color: WHITE,
+    ...font('600'),
   },
-
-subtitle: { fontSize: 14, color: theme.text, marginBottom: 22, textAlign: 'center' },
-primaryTextColor: {
-color: '#FFFFFF',
-fontSize: 14,
-fontWeight: '700',
-textShadowColor: 'transparent',
-opacity: 1,
-padding:5
-    },
-secondaryTextColor: {
-fontSize: 14,
-color: '#ffffff',
-fontWeight: '500',
-marginTop: 4,
-    },
-
-macroLabel: {
-fontSize: 15,
-fontWeight: '700',
-color: ACCENT,       // clear medium-grey label
-letterSpacing: 1.2,
-marginBottom: 4,
-    }, 
-badgeText: {
-color: '#ffffff',
-fontSize: 15,
-fontWeight: '700',
-letterSpacing: 1.5,
-    },
-
-
-
-  });
+});

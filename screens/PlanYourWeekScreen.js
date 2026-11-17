@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { APP_BG_GRADIENT } from '../components/ScreenBackground';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -15,6 +17,12 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import AuthBackground from '../components/AuthBackground';
+import GlassCard from '../components/GlassCard';
+import GlassButton, { GLASS_BUTTON_TEXT } from '../components/GlassButton';
+import { font } from '../utils/fonts';
+import { REPLAN_MODE_KEY } from '../utils/replanMode';
+import useTabBarSpace from '../utils/useTabBarSpace';
 
 const daysOfWeek = [
   'Monday',
@@ -26,19 +34,42 @@ const daysOfWeek = [
   'Sunday',
 ];
 
-// ─── Palette ─────────────────────────────────────────────────────
-const ACCENT = '#C6F135';
-const BG = '#0E0E12';
-const CARD_BG = '#22222E';
-const DAY_OUT = '#2C2C3C';
-const DAY_IN = '#252532';
-const BORDER = '#42425A';
+// ─── Palette — matches Login / Home (navy, white, black) ─────────
+// Black + glass card + soft lime (matches Home)
+const BG_GRADIENT = APP_BG_GRADIENT; // shared — components/ScreenBackground.js
+const CARD_GRADIENT = ['rgba(139,92,246,0.20)', 'rgba(37,99,235,0.06)', 'rgba(37,99,235,0)']; // purple → blue → clear (same as Home cards)
+const TEXT = '#FFFFFF';
+const WHITE = '#FFFFFF';
+const MUTED = '#9A9A9E';        // secondary text
+const PLACEHOLDER = '#6E6E73';
+const TILE_BG = 'rgba(255,255,255,0.06)';      // unselected days / rows
+const TILE_BORDER = 'rgba(255,255,255,0.10)';
+const TILE_ACTIVE_BG = 'rgba(255,255,255,0.09)';
+const ACCENT = '#E4F15F';       // soft lime — selected days, badge, focus
+const ON_ACCENT = '#1A1A1C';    // text on lime
+const WORKOUT_COLOR = '#F59E0B'; // same as Home
+const CARDIO_COLOR = '#F43F5E';  // same as Home
+const DONE_COLOR = '#4ADE80';    // cardio total reached
+
+// weeklyPlan[day] = { workout: boolean, cardio: minutes, type } — a day can have
+// both a workout and cardio. `type` is kept for older readers ('Workout' if the
+// day has a workout, otherwise 'Cardio'). Older saves only have `type`.
+const isWorkoutDay = (entry) => entry?.workout ?? entry?.type === 'Workout';
+const isCardioDay = (entry) =>
+  entry?.workout !== undefined ? Number(entry.cardio) > 0 : entry?.type === 'Cardio';
 
 // How far the Done bar sits below the top of the keyboard.
 // Increase to move it down/closer to the keyboard, decrease to move it up.
 const DONE_BAR_OFFSET = 60;
 
 export default function PlanYourWeekScreen({ navigation }) {
+  const tabSpace = useTabBarSpace(); // room for the floating tab bar
+
+
+  // 'full' | 'cardio' | 'workouts' — see REPLAN_MODE_KEY
+  const [mode, setMode] = useState('full');
+  const cardioOnly = mode === 'cardio';
+  const workoutsOnly = mode === 'workouts';
 
   const [step, setStep] = useState(0);
 
@@ -72,23 +103,60 @@ export default function PlanYourWeekScreen({ navigation }) {
     };
   }, []);
 
-  useEffect(() => {
-    const loadProfile = async () => {
+  // This screen is also a tab, so it can stay mounted between visits —
+  // reload goals, mode and saved plan every time it comes into focus.
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const load = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
 
-      const { data } = await supabase
-        .from('userProfiles')
-        .select('workoutSessionsGoal, cardioGoal')
-        .eq('id', user.id)
-        .single();
+          const [{ data }, savedMode, savedPlanJson] = await Promise.all([
+            supabase
+              .from('userProfiles')
+              .select('workoutSessionsGoal, cardioGoal')
+              .eq('id', user.id)
+              .single(),
+            AsyncStorage.getItem(REPLAN_MODE_KEY),
+            AsyncStorage.getItem('weeklyPlan'),
+          ]);
 
-      setMaxGymDays(data?.workoutSessionsGoal ?? 0);
-      setCardioGoal(data?.cardioGoal ?? 0);
-    };
+          if (!isActive) return;
 
-    loadProfile();
-  }, []);
+          const nextMode = savedMode === 'cardio' || savedMode === 'workouts' ? savedMode : 'full';
+          const savedPlan = savedPlanJson ? JSON.parse(savedPlanJson) : {};
+
+          setMaxGymDays(data?.workoutSessionsGoal ?? 0);
+          setCardioGoal(data?.cardioGoal ?? 0);
+          setMode(nextMode);
+          setStep(nextMode === 'cardio' ? 1 : 0);
+
+          // Keep the activity that isn't being re-planned, since savePlan rebuilds the whole plan
+          setSelectedGymDays(
+            nextMode === 'cardio'
+              ? Object.keys(savedPlan).filter((day) => isWorkoutDay(savedPlan[day]))
+              : []
+          );
+          setCardioPlan(
+            nextMode === 'workouts'
+              ? Object.fromEntries(
+                  Object.entries(savedPlan)
+                    .filter(([, entry]) => isCardioDay(entry))
+                    .map(([day, entry]) => [day, Number(entry.cardio) || 0])
+                )
+              : {}
+          );
+        } catch (err) {
+          console.error('Plan Your Week load error:', err.message);
+        }
+      };
+
+      load();
+      return () => { isActive = false; };
+    }, [])
+  );
 
   const toggleGymDay = (day) => {
 
@@ -140,22 +208,21 @@ export default function PlanYourWeekScreen({ navigation }) {
 
     try {
 
+      // A day can have a workout, cardio, or both
       const weeklyPlan = {};
 
-      selectedGymDays.forEach(day => {
+      daysOfWeek.forEach(day => {
+        const workout = selectedGymDays.includes(day);
+        const cardio = Number(cardioPlan[day]) || 0;
+
+        if (!workout && cardio === 0) return;
+
         weeklyPlan[day] = {
-          type: 'Workout',
-          cardio: 0,
+          type: workout ? 'Workout' : 'Cardio',
+          workout,
+          cardio,
         };
       });
-
-      Object.entries(cardioPlan).forEach(([day, minutes]) => {
-        weeklyPlan[day] = {
-          type: 'Cardio',
-          cardio: Number(minutes) || 0,
-        };
-      });
-
 
       // Store Weekly Plan - Which days that the user plans todo cardio or their workouts  (STORED LOCALLY)
       await AsyncStorage.setItem(
@@ -177,6 +244,8 @@ export default function PlanYourWeekScreen({ navigation }) {
         throw error;
       }
 
+      await AsyncStorage.removeItem(REPLAN_MODE_KEY);
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
@@ -190,15 +259,18 @@ export default function PlanYourWeekScreen({ navigation }) {
     }
   };
 
+  const gymDaysComplete = selectedGymDays.length === maxGymDays;
+  const cardioComplete = totalCardioMinutes === cardioGoal;
+  const stepColor = step === 0 ? WORKOUT_COLOR : CARDIO_COLOR;
+
   return (
 
     <View style={styles.container}>
 
       <StatusBar barStyle="light-content" />
 
-      {/* Background blobs */}
-      <View style={styles.blobTopRight} />
-      <View style={styles.blobBottomLeft} />
+      {/* Background — matches Login / Home */}
+      <AuthBackground colors={BG_GRADIENT} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -210,13 +282,15 @@ export default function PlanYourWeekScreen({ navigation }) {
       >
 
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 140 + tabSpace }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
 
           {/* Header */}
           <View style={styles.header}>
+
+            <Text style={styles.headerEyebrow}>WEEKLY PLAN</Text>
 
             <Text style={styles.title}>
               Plan Your Week
@@ -226,25 +300,24 @@ export default function PlanYourWeekScreen({ navigation }) {
               Fail to Plan, Plan to Fail
             </Text>
 
-            {/* Progress */}
+            {/* Progress — one segment per step (cardio-only has a single step) */}
             <View style={styles.progressContainer}>
 
-              <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width:
-                        step === 0
-                          ? '50%'
-                          : '100%',
-                    },
-                  ]}
-                />
+              <View style={styles.progressRow}>
+                {(mode === 'full' ? [0, 1] : [step]).map((i) => (
+                  <View
+                    key={i}
+                    style={[styles.progressSegment, i <= step && styles.progressSegmentDone]}
+                  />
+                ))}
               </View>
 
               <Text style={styles.progressText}>
-                Step {step + 1} of 2
+                {cardioOnly
+                  ? 'Update your cardio days'
+                  : workoutsOnly
+                    ? 'Update your workout days'
+                    : `Step ${step + 1} of 2`}
               </Text>
 
             </View>
@@ -252,21 +325,23 @@ export default function PlanYourWeekScreen({ navigation }) {
           </View>
 
           {/* Main Card */}
-          <View style={styles.cardContainer}>
+          <GlassCard style={styles.cardContainer} gradient={CARD_GRADIENT}>
 
             {/* Step Header */}
             <View style={styles.cardHeader}>
 
               <View style={styles.cardHeaderLeft}>
-                <Ionicons
-                  name={
-                    step === 0
-                      ? 'barbell-outline'
-                      : 'heart-outline'
-                  }
-                  size={16}
-                  color={ACCENT}
-                />
+                <View style={[styles.cardHeaderIcon, { backgroundColor: stepColor }]}>
+                  <Ionicons
+                    name={
+                      step === 0
+                        ? 'barbell-outline'
+                        : 'heart-outline'
+                    }
+                    size={16}
+                    color={WHITE}
+                  />
+                </View>
 
                 <Text style={styles.cardHeaderText}>
                   {step === 0
@@ -275,15 +350,21 @@ export default function PlanYourWeekScreen({ navigation }) {
                 </Text>
               </View>
 
-              {step === 1 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {cardioGoal} Minutes
-                  </Text>
-                </View>
-              )}
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {step === 0
+                    ? `${selectedGymDays.length} / ${maxGymDays}`
+                    : `${cardioGoal} MIN`}
+                </Text>
+              </View>
 
             </View>
+
+            <Text style={styles.cardSubtitle}>
+              {step === 0
+                ? 'Tap the days you plan to train.'
+                : 'Tap a day to add cardio, then enter the minutes.'}
+            </Text>
 
             {/* Gym Days */}
             {step === 0 && (
@@ -301,34 +382,30 @@ export default function PlanYourWeekScreen({ navigation }) {
                       key={day}
                       activeOpacity={0.8}
                       style={[
-                        styles.dayOuter,
+                        styles.dayTile,
                         selected &&
-                        styles.dayOuterSelected,
+                        styles.dayTileSelected,
                       ]}
                       onPress={() =>
                         toggleGymDay(day)
                       }
                     >
 
-                      <View
+                      <Text
                         style={[
-                          styles.dayInner,
+                          styles.dayText,
                           selected &&
-                          styles.dayInnerSelected,
+                          styles.dayTextSelected,
                         ]}
                       >
+                        {day.slice(0, 3)}
+                      </Text>
 
-                        <Text
-                          style={[
-                            styles.dayText,
-                            selected &&
-                            styles.dayTextSelected,
-                          ]}
-                        >
-                          {day.slice(0, 3)}
-                        </Text>
-
-                      </View>
+                      <Ionicons
+                        name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={18}
+                        color={selected ? ON_ACCENT : PLACEHOLDER}
+                      />
 
                     </TouchableOpacity>
                   );
@@ -351,40 +428,30 @@ export default function PlanYourWeekScreen({ navigation }) {
 
                     <View
                       key={day}
-                      style={styles.cardioRow}
+                      style={[styles.cardioRow, active && styles.cardioRowActive]}
                     >
 
                       <TouchableOpacity
                         activeOpacity={0.8}
                         style={[
-                          styles.dayOuterSmall,
+                          styles.dayChip,
                           active &&
-                          styles.dayOuterSelected,
+                          styles.dayTileSelected,
                         ]}
                         onPress={() =>
                           toggleCardioDay(day)
                         }
                       >
 
-                        <View
+                        <Text
                           style={[
-                            styles.dayInnerSmall,
+                            styles.dayTextSmall,
                             active &&
-                            styles.dayInnerSelected,
+                            styles.dayTextSelected,
                           ]}
                         >
-
-                          <Text
-                            style={[
-                              styles.dayTextSmall,
-                              active &&
-                              styles.dayTextSelected,
-                            ]}
-                          >
-                            {day.slice(0, 3)}
-                          </Text>
-
-                        </View>
+                          {day.slice(0, 3)}
+                        </Text>
 
                       </TouchableOpacity>
 
@@ -395,7 +462,7 @@ export default function PlanYourWeekScreen({ navigation }) {
                           <TextInput
                             style={styles.minutesInput}
                             placeholder="0"
-                            placeholderTextColor="#ffffff"
+                            placeholderTextColor={PLACEHOLDER}
                             keyboardType="number-pad"
                             value={String(cardioPlan[day])}
                             onChangeText={(val) =>
@@ -427,7 +494,7 @@ export default function PlanYourWeekScreen({ navigation }) {
                     TOTAL CARDIO
                   </Text>
 
-                  <Text style={styles.summaryValue}>
+                  <Text style={[styles.summaryValue, cardioComplete && styles.summaryValueDone]}>
                     {totalCardioMinutes} / {cardioGoal} Minutes
                   </Text>
 
@@ -436,69 +503,71 @@ export default function PlanYourWeekScreen({ navigation }) {
               </View>
             )}
 
-          </View>
+          </GlassCard>
 
         </ScrollView>
 
         {/* Bottom Bar */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { bottom: tabSpace }]}>
 
-          {step === 1 && (
+          {step === 1 && !cardioOnly && (
 
-            <TouchableOpacity
+            <GlassButton
               style={styles.backButton}
               onPress={() => setStep(0)}
             >
 
               <Ionicons
                 name="arrow-back-outline"
-                size={18}
-                color={ACCENT}
+                size={20}
+                color={GLASS_BUTTON_TEXT}
               />
 
-            </TouchableOpacity>
+            </GlassButton>
           )}
 
           {step === 0 && (
 
-            <TouchableOpacity
+            <GlassButton
               style={[
                 styles.primaryButton,
-                selectedGymDays.length !== maxGymDays &&
+                !gymDaysComplete &&
                 styles.disabledButton,
               ]}
-              disabled={
-                selectedGymDays.length !== maxGymDays
-              }
-              onPress={() => setStep(1)}
+              disabled={!gymDaysComplete}
+              onPress={() => (workoutsOnly ? savePlan() : setStep(1))}
             >
 
               <Text style={styles.primaryText}>
-                Continue
+                {workoutsOnly ? 'Save Plan' : 'Continue'}
               </Text>
+              <Ionicons
+                name={workoutsOnly ? 'checkmark-outline' : 'arrow-forward-outline'}
+                size={18}
+                color={GLASS_BUTTON_TEXT}
+              />
 
-            </TouchableOpacity>
+            </GlassButton>
           )}
 
           {step === 1 && (
 
-            <TouchableOpacity
+            <GlassButton
               style={[
                 styles.primaryButton,
-                totalCardioMinutes !== cardioGoal &&
+                !cardioComplete &&
                 styles.disabledButton,
               ]}
-              disabled={
-                totalCardioMinutes !== cardioGoal
-              }
+              disabled={!cardioComplete}
               onPress={savePlan}
             >
 
               <Text style={styles.primaryText}>
                 Save Plan
               </Text>
+              <Ionicons name="checkmark-outline" size={18} color={GLASS_BUTTON_TEXT} />
 
-            </TouchableOpacity>
+            </GlassButton>
           )}
 
         </View>
@@ -531,179 +600,170 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: BG,
-  },
-
-  // ── Background ─────────────────────────
-  blobTopRight: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: ACCENT,
-    opacity: 0.05,
-    top: -80,
-    right: -80,
-  },
-
-  blobBottomLeft: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: '#5B4FE8',
-    opacity: 0.06,
-    bottom: 60,
-    left: -80,
+    backgroundColor: '#000000',
   },
 
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingTop: 64,
     paddingBottom: 140,
   },
 
   // ── Header ─────────────────────────────
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+
+  headerEyebrow: {
+    color: WHITE,
+    opacity: 0.8,
+    fontSize: 11,
+    ...font('700'),
+    letterSpacing: 2,
+    marginBottom: 4,
   },
 
   title: {
     fontSize: 28,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    ...font('900'),
+    color: WHITE,
     letterSpacing: -0.7,
-    marginBottom: 6,
+    marginBottom: 4,
   },
 
   subtitle: {
     fontSize: 14,
-    color: '#ffffff',
-    marginBottom: 24,
+    ...font('400'),
+    color: WHITE,
+    opacity: 0.8,
+    marginBottom: 20,
   },
 
   progressContainer: {
     width: '100%',
   },
 
-  progressTrack: {
-    height: 8,
-    backgroundColor: '#252532',
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginBottom: 10,
+  progressRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 8,
   },
 
-  progressFill: {
-    height: '100%',
-    backgroundColor: ACCENT,
-    borderRadius: 10,
+  progressSegment: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF4D',
+  },
+
+  progressSegmentDone: {
+    backgroundColor: WHITE,
   },
 
   progressText: {
-    color: '#A0A0BC',
-    fontSize: 12,
-    fontWeight: '700',
+    color: WHITE,
+    fontSize: 13,
+    ...font('600'),
     textAlign: 'center',
-    letterSpacing: 1,
   },
 
   // ── Main Card ──────────────────────────
+  // Glass look + edge come from GlassCard
   cardContainer: {
-    backgroundColor: CARD_BG,
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: BORDER,
-
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
+    padding: 20,
   },
 
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 6,
   },
 
   cardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 10,
+    flexShrink: 1,
+  },
+
+  cardHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   cardHeaderText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    color: TEXT,
+    fontSize: 17,
+    ...font('800'),
+    letterSpacing: -0.3,
+    flexShrink: 1,
+  },
+
+  cardSubtitle: {
+    color: MUTED,
+    fontSize: 13,
+    ...font('400'),
+    marginBottom: 16,
   },
 
   badge: {
-    backgroundColor: ACCENT + '22',
-    borderWidth: 1,
-    borderColor: ACCENT + '55',
-    paddingHorizontal: 8,
+    backgroundColor: ACCENT,
+    paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 6,
+    marginLeft: 8,
   },
 
   badgeText: {
-    color: ACCENT,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
+    color: ON_ACCENT,
+    fontSize: 11,
+    ...font('800'),
+    letterSpacing: 0.5,
   },
 
-  // ── Grid ───────────────────────────────
+  // ── Workout day grid ───────────────────
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
 
-  dayOuter: {
-    width: '30%',
+  dayTile: {
+    width: '31%',
     aspectRatio: 1,
     borderRadius: 18,
-    backgroundColor: DAY_OUT,
+    backgroundColor: TILE_BG,
     borderWidth: 1.5,
-    borderColor: BORDER,
-    marginBottom: 14,
-    overflow: 'hidden',
-  },
-
-  dayInner: {
-    flex: 1,
-    backgroundColor: DAY_IN,
+    borderColor: TILE_BORDER,
+    marginBottom: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 16,
+    gap: 8,
   },
 
-  dayOuterSelected: {
+  dayTileSelected: {
+    backgroundColor: ACCENT,
     borderColor: ACCENT,
   },
 
-  dayInnerSelected: {
-    backgroundColor: ACCENT,
-  },
-
   dayText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 1,
+    color: TEXT,
+    fontSize: 16,
+    ...font('800'),
+    letterSpacing: 0.5,
   },
 
   dayTextSelected: {
-    color: '#0E0E12',
+    color: ON_ACCENT,
   },
 
-  // ── Cardio (compact) ───────────────────
+
+  // ── Cardio rows ────────────────────────
   cardioContainer: {
     gap: 8,
   },
@@ -712,109 +772,107 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    backgroundColor: TILE_BG,
+    borderRadius: 14,
+    padding: 6,
+    paddingRight: 8,
   },
 
-  dayOuterSmall: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: DAY_OUT,
+  cardioRowActive: {
+    backgroundColor: TILE_ACTIVE_BG,
     borderWidth: 1.5,
-    borderColor: BORDER,
-    overflow: 'hidden',
+    borderColor: ACCENT,
+    padding: 4.5,
+    paddingRight: 6.5,
   },
 
-  dayInnerSmall: {
-    flex: 1,
-    backgroundColor: DAY_IN,
+  dayChip: {
+    width: 52,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: TILE_BG,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
   },
 
   dayTextSmall: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
+    color: TEXT,
+    fontSize: 13,
+    ...font('800'),
     letterSpacing: 0.5,
   },
 
   minutesInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: DAY_IN,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: BORDER,
-    paddingHorizontal: 12,
-    height: 44,
+    paddingHorizontal: 8,
+    height: 40,
     minWidth: 100,
     justifyContent: 'flex-end',
     gap: 6,
   },
 
   minutesInput: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
+    color: TEXT,
+    fontSize: 18,
+    ...font('800'),
     textAlign: 'right',
-    minWidth: 32,
+    minWidth: 40,
     padding: 0,
   },
 
   minutesUnit: {
-    color: '#ffffff',
+    color: MUTED,
     fontSize: 12,
-    fontWeight: '600',
+    ...font('600'),
   },
 
   inactiveLabel: {
-    color: '#ffffff',
+    color: MUTED,
     fontSize: 12,
-    fontWeight: '600',
-    fontStyle: 'italic',
+    ...font('600'),
+    paddingRight: 8,
   },
 
   summaryCard: {
     marginTop: 8,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: ACCENT + '12',
+    backgroundColor: TILE_BG,
     borderWidth: 1,
-    borderColor: ACCENT + '33',
+    borderColor: TILE_BORDER,
     alignItems: 'center',
   },
 
   summaryLabel: {
-    color: '#A0A0BC',
+    color: WHITE,
+    opacity: 0.7,
     fontSize: 11,
-    fontWeight: '700',
+    ...font('700'),
     letterSpacing: 1.4,
     marginBottom: 4,
   },
 
   summaryValue: {
-    color: ACCENT,
+    color: WHITE,
     fontSize: 22,
-    fontWeight: '900',
+    ...font('900'),
+  },
+
+  summaryValueDone: {
+    color: DONE_COLOR,
   },
 
   // ── Floating Done Bar (above keyboard) ─
   accessoryBar: {
     position: 'absolute',
-    right: 0,
-    backgroundColor: CARD_BG,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderColor:'#C6F135',
-    borderRadius:40,
+    right: 16,
+    backgroundColor: '#2C2C2F',
+    borderRadius: 40,
     paddingVertical: 8,
     paddingHorizontal: 12,
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    // zIndex: 999,
-    // elevation: 999,
   },
 
   accessoryDoneButton: {
@@ -823,9 +881,9 @@ const styles = StyleSheet.create({
   },
 
   accessoryDoneText: {
-    color: ACCENT,
+    color: WHITE,
     fontSize: 16,
-    fontWeight: '700',
+    ...font('700'),
   },
 
   // ── Bottom Bar ─────────────────────────
@@ -838,54 +896,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
 
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 30,
 
-    backgroundColor: BG,
+    backgroundColor: 'rgba(0,0,0,0.85)',
     borderTopWidth: 1,
-    borderTopColor: BORDER,
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
 
+  // Glass look comes from GlassButton
   backButton: {
     width: 56,
     height: 56,
-    borderRadius: 16,
-
     justifyContent: 'center',
     alignItems: 'center',
-
-    borderWidth: 1.5,
-    borderColor: ACCENT + '55',
-    backgroundColor: 'transparent',
   },
 
+  // Glass look comes from GlassButton
   primaryButton: {
     flex: 1,
-
-    backgroundColor: ACCENT,
-
+    flexDirection: 'row',
+    gap: 8,
     paddingVertical: 16,
-    borderRadius: 16,
-
     alignItems: 'center',
     justifyContent: 'center',
-
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
   },
 
   disabledButton: {
-    opacity: 0.35,
+    opacity: 0.3,
   },
 
   primaryText: {
-    color: '#0E0E12',
+    color: GLASS_BUTTON_TEXT,
     fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 0.5,
+    ...font('800'),
+    letterSpacing: 0.3,
   },
 });

@@ -4,32 +4,32 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalDateKey } from '../utils/dailyMacros';
 
-import ActivityInputNumberPad from './ActivityInputNumber';
 
+// ─── Palette — matches Login / Home (navy, white, black) ─────────
+const NAVY        = '#0B1F4D';
+const INK         = '#111111';   // primary text / buttons
+const WHITE       = '#FFFFFF';
+const SURFACE     = '#F2F2F2';   // input rows
+const MUTED       = '#8C8C8C';   // secondary text
+const PLACEHOLDER = '#BABABA';
 
-// // ─── Palette — matches app design system ─────────────────────────
-const ACCENT   = '#C6F135';
-const CARD_BG  = '#22222E';
-const INPUT_BG = '#252532';
-const BORDER   = '#42425A';
+// Macro colours — same as the Nutrition card on Home
+const MACRO_CALORIES = '#EF4444';
+const MACRO_PROTEIN  = '#5669FF';
+const MACRO_CARBS    = '#16A34A';
+const MACRO_FAT      = '#8B5CF6';
 
- // ─── Palette additions (place with your other consts) ──
- const MACRO_PROTEIN = '#C6F135'; // lime
- const MACRO_CARBS = '#2563EB';   // blue
- const MACRO_FAT = '#F97316';     // orange
- const MACRO_CALORIES = '#EC4899'; // pink, if you track calories separately
- 
 
 
 const AddMacrosModal = ({
     visible,
     onClose,
-  
+
     caloriesConsumed = 0,
     proteinConsumed = 0,
     carbohydratesConsumed = 0,
     fatsConsumed = 0,
-  
+
     setCaloriesConsumed,
     setProteinConsumed,
     setCarbohydratesConsumed,
@@ -91,7 +91,7 @@ const AddMacrosModal = ({
         fats: newFats,
       };
 
-      
+
       await AsyncStorage.multiSet([
           ['todayMacros', JSON.stringify(todayMacros)],
           ['todayMacrosDate', getLocalDateKey()],
@@ -117,30 +117,60 @@ const AddMacrosModal = ({
     }
   };
 
+  const todaySoFar = [
+    { key: 'calories', label: 'kcal',    value: caloriesConsumed,      color: MACRO_CALORIES },
+    { key: 'protein',  label: 'Protein', value: proteinConsumed,       color: MACRO_PROTEIN },
+    { key: 'carbs',    label: 'Carbs',   value: carbohydratesConsumed, color: MACRO_CARBS },
+    { key: 'fats',     label: 'Fats',    value: fatsConsumed,          color: MACRO_FAT },
+  ];
+
   return (
             <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
             <View style={styles.overlay}>
                 <View style={styles.modalContainer}>
-                    
+
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                          {/* <Ionicons name="nutrition-outline" size={16} color={ACCENT} /> */}
-                          <Text style={styles.title}>Update Macros</Text>
+                          <View style={styles.badge}>
+                            <Text style={styles.badgeText}>NUTRITION</Text>
+                          </View>
+                          <Text style={styles.title}>Add Food</Text>
                         </View>
-                        <Pressable onPress={onClose}>
-                            <Ionicons name="close-circle-outline" size={26} color="#ffffff" />
+                        <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={10}>
+                            <Ionicons name="close" size={20} color={INK} />
                         </Pressable>
                     </View>
 
-                    <Text style={styles.subtitle}>3rd Party Nutrition Trackers integrations coming soon</Text>
+                    <Text style={styles.subtitle}>
+                      Added on top of today's totals · Nutrition tracker integrations coming soon
+                    </Text>
+
+                    {/* Today so far */}
+                    <View style={styles.progressCard}>
+                      <Text style={styles.progressTitle}>Today so far</Text>
+                      <View style={styles.progressRow}>
+                        {todaySoFar.map((item, index) => (
+                          <React.Fragment key={item.key}>
+                            {index > 0 && <View style={styles.progressDivider} />}
+                            <View style={styles.progressItem}>
+                              <Text style={styles.progressValue}>{item.value || 0}</Text>
+                              <View style={styles.progressLabelRow}>
+                                <View style={[styles.progressDot, { backgroundColor: item.color }]} />
+                                <Text style={styles.progressLabel}>{item.label}</Text>
+                              </View>
+                            </View>
+                          </React.Fragment>
+                        ))}
+                      </View>
+                    </View>
 
                     {/* Input Fields */}
                     <View style={styles.inputGroup}>
-                        <MacroInput label="Calories" value={calsInputValue} onChange={setCaloriesInputValue} placeholder="kcal" icon_color = {MACRO_CALORIES} icon="flame-outline" />
-                        <MacroInput label="Protein" value={proteinInputValue} onChange={setProteinInputValue} placeholder="g" icon_color = {MACRO_PROTEIN} icon="fish-outline" />
-                        <MacroInput label="Carbs" value={carbsInputValue} onChange={setCarbsInputValue} placeholder="g" icon_color = {MACRO_CARBS}  icon="nutrition-outline" />
-                        <MacroInput label="Fats" value={fatsInputValue} onChange={setFatsInputValue} placeholder="g" icon_color = {MACRO_FAT} icon="water-outline" />
+                        <MacroInput label="Calories" value={calsInputValue} onChange={setCaloriesInputValue} unit="kcal" color={MACRO_CALORIES} icon="flame-outline" />
+                        <MacroInput label="Protein" value={proteinInputValue} onChange={setProteinInputValue} unit="g" color={MACRO_PROTEIN} icon="fish-outline" />
+                        <MacroInput label="Carbs" value={carbsInputValue} onChange={setCarbsInputValue} unit="g" color={MACRO_CARBS} icon="nutrition-outline" />
+                        <MacroInput label="Fats" value={fatsInputValue} onChange={setFatsInputValue} unit="g" color={MACRO_FAT} icon="water-outline" />
                     </View>
 
                     {/* Save Button */}
@@ -150,8 +180,8 @@ const AddMacrosModal = ({
                       activeOpacity={0.85}
                       disabled={saving}
                     >
-                         {/* <Ionicons name="checkmark-outline" size={18} color="#0E0E12" /> */}
                         <Text style={styles.saveButtonText}>{saving ? 'Saving…' : 'Save Progress'}</Text>
+                        {!saving && <Ionicons name="checkmark-outline" size={18} color={WHITE} />}
                     </TouchableOpacity>
                 </View>
 
@@ -169,70 +199,156 @@ const AddMacrosModal = ({
   );
 
 
-  
+
 };
 
-// Reusable Input Component to keep code DRY
-const MacroInput = ({ label, icon_color, value, onChange, placeholder, icon }) => (
+// One row per macro: coloured icon chip, label, number input + unit
+const MacroInput = ({ label, color, value, onChange, unit, icon }) => {
+  const [focused, setFocused] = useState(false);
 
+  return (
+    <View style={[styles.inputWrapper, focused && styles.inputWrapperFocused]}>
+      <View style={styles.inputLabel}>
+        <View style={[styles.inputIcon, { backgroundColor: color }]}>
+          <Ionicons name={icon} size={16} color={WHITE} />
+        </View>
+        <Text style={styles.label}>{label}</Text>
+      </View>
 
-<View>
-
-      <ActivityInputNumberPad
-          icon={icon}
-          icon_color={icon_color}
-          label={label}
+      <View style={styles.inputRight}>
+        <TextInput
+          style={styles.input}
+          placeholder="0"
+          placeholderTextColor={PLACEHOLDER}
+          keyboardType="number-pad"
           value={value}
-          onChange={onChange}
-      />
-
-  </View>
-);
+          onChangeText={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+        <Text style={styles.inputUnit}>{unit}</Text>
+      </View>
+    </View>
+  );
+};
 
 // THESE STYLES ARE REQUIRED
 const styles = StyleSheet.create({
   overlay: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.6)",
+      backgroundColor: NAVY + 'CC',
       justifyContent: "center",
       alignItems: "center",
   },
   modalContainer: {
-      width: "85%",
-      backgroundColor: CARD_BG,
-      padding: 20,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: BORDER,
-      elevation: 5, // Shadow for Android
+      width: "88%",
+      backgroundColor: WHITE,
+      padding: 22,
+      borderRadius: 24,
+      elevation: 12, // Shadow for Android
       shadowColor: '#000', // Shadow for iOS
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.25,
+      shadowRadius: 24,
   },
   header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 5
+      alignItems: 'flex-start',
+      marginBottom: 8,
   },
   headerLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 7,
+      gap: 6,
+  },
+  badge: {
+      alignSelf: 'flex-start',
+      backgroundColor: NAVY,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 4,
+  },
+  badgeText: {
+      color: WHITE,
+      fontSize: 9,
+      fontWeight: '700',
+      letterSpacing: 1.5,
   },
   title: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: '#FFFFFF',
-      letterSpacing: 0.2,
+      fontSize: 22,
+      fontWeight: "900",
+      color: INK,
+      letterSpacing: -0.5,
+  },
+  closeBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: SURFACE,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 4,
   },
   subtitle: {
       fontSize: 12,
-      color: '#ffffff',
-      fontStyle: 'italic',
-      marginBottom: 18
+      color: MUTED,
+      lineHeight: 17,
+      marginBottom: 16,
   },
+
+  // Today so far
+  progressCard: {
+      backgroundColor: NAVY,
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 16,
+  },
+  progressTitle: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: WHITE,
+      opacity: 0.7,
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: 10,
+  },
+  progressRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+  },
+  progressItem: {
+      alignItems: 'center',
+      gap: 4,
+  },
+  progressValue: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: WHITE,
+      letterSpacing: -0.5,
+  },
+  progressLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+  },
+  progressDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+  },
+  progressLabel: {
+      fontSize: 11,
+      color: WHITE,
+      opacity: 0.7,
+      fontWeight: '500',
+  },
+  progressDivider: {
+      width: 1,
+      height: 32,
+      backgroundColor: '#FFFFFF26',
+  },
+
+  // Inputs
   inputGroup: {
       gap: 10,
       marginBottom: 20
@@ -241,57 +357,81 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: INPUT_BG,
-      borderWidth: 1,
-      borderColor: BORDER,
-      borderRadius: 12,
+      backgroundColor: SURFACE,
+      borderWidth: 1.5,
+      borderColor: SURFACE,
+      borderRadius: 14,
       paddingVertical: 8,
-      paddingHorizontal: 12,
+      paddingLeft: 8,
+      paddingRight: 14,
   },
-  labelGroup: {
+  inputWrapperFocused: {
+      backgroundColor: WHITE,
+      borderColor: INK,
+  },
+  inputLabel: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 10,
+  },
+  inputIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      justifyContent: 'center',
+      alignItems: 'center',
   },
   label: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#ffffff'
-  },
-  input: {
-      width: 90,
-      backgroundColor: 'transparent',
-      borderRadius: 8,
-      paddingHorizontal: 4,
-      paddingVertical: 4,
-      textAlign: 'right',
-      color: '#FFFFFF',
       fontSize: 15,
       fontWeight: '700',
+      color: INK,
   },
+  inputRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+  },
+  input: {
+      minWidth: 64,
+      paddingVertical: 4,
+      textAlign: 'right',
+      color: INK,
+      fontSize: 18,
+      fontWeight: '800',
+  },
+  inputUnit: {
+      width: 30,
+      fontSize: 12,
+      fontWeight: '600',
+      color: MUTED,
+  },
+
+  // Save
   saveButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 6,
-      backgroundColor: ACCENT,
-      paddingVertical: 13,
-      borderRadius: 12,
-      shadowColor: ACCENT,
-      shadowOffset: { width: 0, height: 5 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
+      gap: 8,
+      backgroundColor: INK,
+      paddingVertical: 16,
+      borderRadius: 14,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 12,
       elevation: 6,
   },
   saveButtonDisabled: {
       opacity: 0.6,
   },
   saveButtonText: {
-      color: '#0E0E12',
+      color: WHITE,
       fontSize: 15,
-      fontWeight: '900',
+      fontWeight: '800',
       letterSpacing: 0.3,
   },
+
+  // iOS keyboard "Done" bar
   accessoryBar: {
     position: 'absolute',
     left: 0,
@@ -301,12 +441,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   accessoryDoneText: {
-    backgroundColor: '#22222E',
-    borderWidth: 1,
+    backgroundColor: INK,
     borderRadius: 41,
-    borderColor: '#C6F135',
-    padding: 10,
-    color: '#C6F135',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    color: WHITE,
     fontSize: 16,
     fontWeight: '700',
     overflow: 'hidden',

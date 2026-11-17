@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Pressable, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { M, modalStyles as ms } from '../components/modalTheme';
+import { font } from '../utils/fonts';
 
 const STORAGE_KEY = 'fitbounty.weeklyPlanner.v1';
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -125,14 +127,19 @@ export default function CreateMyPlan() {
       </TouchableOpacity>
 
       <Modal visible={isModalVisible} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add Task - {selectedDay}</Text>
+        <View style={ms.sheetOverlay}>
+          <View style={ms.sheetCard}>
+            <View style={[ms.headerLeft, { marginBottom: 12 }]}>
+              <View style={ms.badge}>
+                <Text style={ms.badgeText}>NEW TASK</Text>
+              </View>
+              <Text style={ms.title}>Add Task - {selectedDay}</Text>
+            </View>
 
-            <Text style={styles.inputLabel}>Title</Text>
-            <TextInput placeholder="e.g. Leg Day, 5km Run, Visit a friend" value={newTaskTitle} onChangeText={setNewTaskTitle} style={styles.input} />
+            <Text style={[ms.fieldLabel, styles.fieldGap]}>Title</Text>
+            <TextInput placeholder="e.g. Leg Day, 5km Run, Visit a friend" placeholderTextColor={M.PLACEHOLDER} value={newTaskTitle} onChangeText={setNewTaskTitle} style={ms.textInput} />
 
-            <Text style={styles.inputLabel}>Type</Text>
+            <Text style={[ms.fieldLabel, styles.fieldGap]}>Type</Text>
             <View style={styles.typesRow}>
               {Object.keys(DEFAULT_XP_BY_TYPE).map(type => {
                 const isActive = newTaskType === type;
@@ -144,15 +151,15 @@ export default function CreateMyPlan() {
               })}
             </View>
 
-            <Text style={styles.inputLabel}>XP</Text>
-            <TextInput keyboardType="numeric" value={newTaskXp} onChangeText={setNewTaskXp} style={styles.input} />
+            <Text style={[ms.fieldLabel, styles.fieldGap]}>XP</Text>
+            <TextInput keyboardType="numeric" value={newTaskXp} onChangeText={setNewTaskXp} style={ms.textInput} />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setIsModalVisible(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
+              <TouchableOpacity style={[ms.secondaryButton, styles.modalBtn]} onPress={() => setIsModalVisible(false)}>
+                <Text style={ms.secondaryButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={addTask}>
-                <Text style={styles.saveText}>Save</Text>
+              <TouchableOpacity style={[ms.saveButton, styles.modalBtn]} onPress={addTask}>
+                <Text style={ms.saveButtonText}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -184,20 +191,13 @@ const styles = StyleSheet.create({
   taskMeta: { fontSize: 12, color: '#666', marginTop: 2 },
   deleteBtn: { padding: 6 },
   fab: { position: 'absolute', right: 20, bottom: 30, backgroundColor: '#4CAF50', width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3 },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12, color: '#333' },
-  inputLabel: { fontSize: 12, color: '#666', marginBottom: 4, marginTop: 8 },
-  input: { backgroundColor: '#f1f3f5', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
-  typesRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-  typeChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, backgroundColor: '#e9ecef', marginRight: 8 },
-  typeChipActive: { backgroundColor: '#4CAF50' },
-  typeChipText: { color: '#333', fontWeight: '600' },
-  typeChipTextActive: { color: '#fff' },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 },
-  modalBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, marginLeft: 8 },
-  cancelBtn: { backgroundColor: '#f1f3f5' },
-  saveBtn: { backgroundColor: '#4CAF50' },
-  cancelText: { color: '#333', fontWeight: '600' },
-  saveText: { color: '#fff', fontWeight: '700' },
+  // Add Task modal — Add Food design (components/modalTheme.js)
+  fieldGap: { marginTop: 10 },
+  typesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  typeChip: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: M.SURFACE },
+  typeChipActive: { backgroundColor: M.INK },
+  typeChipText: { color: M.INK, ...font('600') },
+  typeChipTextActive: { color: M.WHITE },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  modalBtn: { flex: 1 },
 });

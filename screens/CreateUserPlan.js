@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ScreenBackground from '../components/ScreenBackground';
 import { useNavigation } from '@react-navigation/native';
 import {
   View,
@@ -156,7 +157,6 @@ export default function CreateUserPlan() {
           cardioGoal:          answers.cardioMinutes || null,
           UserHasEnteredTheirProfileDataTrigger: true,
           UserHasWeeklyPlanSetup: false,
-          weeklyStepCount: answers.steps * 7,
           lastupdate_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -181,9 +181,7 @@ export default function CreateUserPlan() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
-      <View style={styles.blobTopRight} />
-      <View style={styles.blobBottomLeft} />
+      <ScreenBackground />
 
       <ScrollView
         contentContainerStyle={styles.scroll}

@@ -31,9 +31,11 @@ PODS:
     - ExpoModulesCore
   - ExpoDomWebView (57.0.0):
     - ExpoModulesCore
-  - ExpoFileSystem (57.0.0):
+  - ExpoFileSystem (57.0.7):
     - ExpoModulesCore
   - ExpoFont (57.0.0):
+    - ExpoModulesCore
+  - ExpoGlassEffect (57.0.4):
     - ExpoModulesCore
   - ExpoKeepAwake (57.0.0):
     - ExpoModulesCore
@@ -71,6 +73,8 @@ PODS:
   - ExpoModulesWorklets (57.0.3):
     - ExpoModulesCore
     - ExpoModulesJSI
+  - ExpoSplashScreen (57.0.10):
+    - ExpoModulesCore
   - FBLazyVector (0.86.0)
   - hermes-engine (250829098.0.14):
     - hermes-engine/Pre-built (= 250829098.0.14)
@@ -2107,14 +2111,16 @@ DEPENDENCIES:
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo/node_modules/expo-asset/ios`)
   - "ExpoDomWebView (from `../node_modules/expo/node_modules/@expo/dom-webview/ios`)"
-  - ExpoFileSystem (from `../node_modules/expo/node_modules/expo-file-system/ios/ExpoFileSystem.podspec`)
+  - ExpoFileSystem (from `../node_modules/expo-file-system/ios/ExpoFileSystem.podspec`)
   - ExpoFont (from `../node_modules/expo-font/ios/ExpoFont.podspec`)
+  - ExpoGlassEffect (from `../node_modules/expo-glass-effect/ios`)
   - ExpoKeepAwake (from `../node_modules/expo/node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - "ExpoLogBox (from `../node_modules/expo/node_modules/@expo/log-box`)"
   - ExpoModulesCore (from `../node_modules/expo-modules-core/ExpoModulesCore.podspec`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-jsi/apple`)
   - ExpoModulesWorklets (from `../node_modules/expo-modules-core/ExpoModulesWorklets.podspec`)
+  - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2207,9 +2213,11 @@ EXTERNAL SOURCES:
   ExpoDomWebView:
     :path: "../node_modules/expo/node_modules/@expo/dom-webview/ios"
   ExpoFileSystem:
-    :podspec: "../node_modules/expo/node_modules/expo-file-system/ios/ExpoFileSystem.podspec"
+    :podspec: "../node_modules/expo-file-system/ios/ExpoFileSystem.podspec"
   ExpoFont:
     :podspec: "../node_modules/expo-font/ios/ExpoFont.podspec"
+  ExpoGlassEffect:
+    :path: "../node_modules/expo-glass-effect/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo/node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
@@ -2222,6 +2230,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-jsi/apple"
   ExpoModulesWorklets:
     :podspec: "../node_modules/expo-modules-core/ExpoModulesWorklets.podspec"
+  ExpoSplashScreen:
+    :path: "../node_modules/expo-splash-screen/ios"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:
@@ -2389,14 +2399,16 @@ SPEC CHECKSUMS:
   Expo: a57eca9a47a1cd1c75d28be5d06a66e12dde1c8c
   ExpoAsset: fc429c61615141b81faabdb5b0c4f8f2861c7449
   ExpoDomWebView: ae603aa2c151929ebb1ee68c4607e105b68b4ebc
-  ExpoFileSystem: bf907fa86da7cc9088331f1930a572f43353ed50
+  ExpoFileSystem: 980be7ecc921f6ba73cdf986ff66e1ecd57b8ef7
   ExpoFont: 15dc02c38fcb621aa56c87c3ab840f281e92f6cf
+  ExpoGlassEffect: 452d3b8408009c545b43319fb048f7f8e1f0e1ab
   ExpoKeepAwake: c5a7e46e8f52c093370ea89457d73c060d0b2a2e
   ExpoLinearGradient: fbece8ebce18b0837de868014e6adf1f9e7f67c4
   ExpoLogBox: 71393ad8a15193044673cee88f6f41cf014bccd7
   ExpoModulesCore: 1fa9641bfba17fea7864c5fd9a3b0e954b046599
   ExpoModulesJSI: ca1381e851de6269705442ba66bc54a3320a142b
   ExpoModulesWorklets: 7ee538b64f31c28729cd5a6a693593b300452b4f
+  ExpoSplashScreen: 81fbc53af1ad30c739358ab6d3553769f05d2404
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
   hermes-engine: 0a1d291f221e200809c019d24863d288428073ba
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b

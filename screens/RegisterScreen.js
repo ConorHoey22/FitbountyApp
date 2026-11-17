@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { APP_BG_GRADIENT } from '../components/ScreenBackground';
 import {
   View,
   TextInput,
@@ -15,6 +16,9 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AuthBackground from '../components/AuthBackground';
+import GlassCard from '../components/GlassCard';
+import { font } from '../utils/fonts';
 import { supabase } from '../lib/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -126,12 +130,7 @@ export default function RegisterScreen({ navigation }) {
               cardioXPAmount: 0,
               stepsXPAmount: 0,
               nutritionXPAmount: 0,
-              weeklyFitBKey: 0,
-              weeklyCardioCount: 0,
-              weeklyWorkoutCount: 0,
-              dailyStepCount: 0,
               isCardioRewarded: 0,
-              weeklyStepCount: 0,
             },
           ]);
 
@@ -156,9 +155,8 @@ export default function RegisterScreen({ navigation }) {
     >
       <StatusBar barStyle="light-content" />
 
-      {/* Background accent blobs */}
-      <View style={styles.blobTopRight} />
-      <View style={styles.blobBottomLeft} />
+      {/* Background */}
+      <AuthBackground colors={BG_GRADIENT} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -190,7 +188,7 @@ export default function RegisterScreen({ navigation }) {
           </View>
 
           {/* Form Card */}
-          <View style={styles.card}>
+          <GlassCard style={styles.card} gradient={CARD_GRADIENT}>
             <View style={styles.fieldWrapper}>
               <Text style={styles.label}>EMAIL</Text>
               <View
@@ -202,7 +200,7 @@ export default function RegisterScreen({ navigation }) {
                 <Ionicons
                   name="mail-outline"
                   size={18}
-                  color={focusedField === 'email' ? ACCENT : '#4a4a5a'}
+                  color={focusedField === 'email' ? ACCENT : MUTED}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -231,7 +229,7 @@ export default function RegisterScreen({ navigation }) {
                 <Ionicons
                   name="lock-closed-outline"
                   size={18}
-                  color={focusedField === 'password' ? ACCENT : '#4a4a5a'}
+                  color={focusedField === 'password' ? ACCENT : MUTED}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -251,7 +249,7 @@ export default function RegisterScreen({ navigation }) {
                   <Ionicons
                     name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                     size={18}
-                    color={PLACEHOLDER}
+                    color={MUTED}
                   />
                 </TouchableOpacity>
               </View>
@@ -274,7 +272,7 @@ export default function RegisterScreen({ navigation }) {
                 <Ionicons
                   name="lock-closed-outline"
                   size={18}
-                  color={focusedField === 'confirm' ? ACCENT : '#4a4a5a'}
+                  color={focusedField === 'confirm' ? ACCENT : MUTED}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -294,7 +292,7 @@ export default function RegisterScreen({ navigation }) {
                   <Ionicons
                     name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
                     size={18}
-                    color={PLACEHOLDER}
+                    color={MUTED}
                   />
                 </TouchableOpacity>
               </View>
@@ -327,48 +325,34 @@ export default function RegisterScreen({ navigation }) {
                 <Text style={styles.footerLink}>Sign In</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </GlassCard>
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const ACCENT = '#C6F135';       // electric lime
-const BG = '#0E0E12';           // near-black
-const SURFACE = '#18181F';      // card surface
-const BORDER = '#2a2a35';       // default border
-const BORDER_FOCUS = '#C6F135'; // focused border
-const BORDER_ERROR = '#FF4D6D'; // error border
-const PLACEHOLDER = '#EDEDED';
+// ─── Palette — black + glass card + soft lime (matches Home) ─────
+const BG_GRADIENT = APP_BG_GRADIENT; // shared — components/ScreenBackground.js
+const CARD_GRADIENT = ['rgba(139,92,246,0.20)', 'rgba(37,99,235,0.06)', 'rgba(37,99,235,0)']; // purple → blue → clear (same as Home cards)
+const TEXT = '#FFFFFF';                      // headings / labels / input text
+const WHITE = '#FFFFFF';
+const MUTED = '#9A9A9E';                     // secondary text / icons
+const PLACEHOLDER = '#6E6E73';
+const INPUT_BG = 'rgba(255,255,255,0.06)';   // translucent input fill
+const INPUT_BORDER = 'rgba(255,255,255,0.10)';
+const INPUT_FOCUS_BG = 'rgba(255,255,255,0.09)';
+const DIVIDER = 'rgba(255,255,255,0.10)';
+const ACCENT = '#E4F15F';                    // soft lime — main button, focus, links
+const ON_ACCENT = '#1A1A1C';                 // text on lime
+const BORDER_ERROR = '#EF4444';
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: '#000000',
   },
 
-  // Background decorative blobs
-  blobTopRight: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: ACCENT,
-    opacity: 0.06,
-    top: -80,
-    right: -80,
-  },
-  blobBottomLeft: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: '#5B4FE8',
-    opacity: 0.07,
-    bottom: 60,
-    left: -80,
-  },
 
   scrollContent: {
     flexGrow: 1,
@@ -396,76 +380,75 @@ const styles = StyleSheet.create({
   },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: ACCENT + '22',
+    backgroundColor: WHITE + '26',
     borderWidth: 1,
-    borderColor: ACCENT + '55',
+    borderColor: WHITE + '66',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
     marginBottom: 16,
   },
   badgeText: {
-    color: ACCENT,
+    color: WHITE,
     fontSize: 10,
-    fontWeight: '700',
+    ...font('700'),
     letterSpacing: 2,
   },
   title: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    ...font('700'),
+    color: WHITE,
     // lineHeight: 50,
 
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 15,
-    color: '#ffffff',
+    ...font('400'),
+    color: WHITE,
     letterSpacing: 0.2,
   },
 
   // Card
+  // Glass look + edge come from GlassCard
   card: {
-    backgroundColor: SURFACE,
-    borderRadius: 20,
     padding: 24,
-    borderWidth: 1,
-    borderColor: BORDER,
   },
   fieldWrapper: {
     marginBottom: 18,
   },
   label: {
-    color: '#ffffff',
+    color: TEXT,
     fontSize: 10,
-    fontWeight: '700',
+    ...font('700'),
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0E0E12',
+    backgroundColor: INPUT_BG,
     borderWidth: 1.5,
-    borderColor: BORDER,
+    borderColor: INPUT_BORDER,
     borderRadius: 12,
     paddingHorizontal: 14,
   },
   inputFocused: {
-    borderColor: BORDER_FOCUS,
-    backgroundColor: '#13131a',
+    borderColor: ACCENT,
+    backgroundColor: INPUT_FOCUS_BG,
   },
   inputError: {
     borderColor: BORDER_ERROR,
   },
   inputIcon: {
-    color: PLACEHOLDER,
+    color: MUTED,
     marginRight: 10,
   },
   input: {
     paddingVertical: 15,
     fontSize: 15,
-    color: '#FFFFFF',
+    ...font('400'),
+    color: TEXT,
     letterSpacing: 0.3,
   },
   eyeIcon: {
@@ -474,6 +457,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: BORDER_ERROR,
     fontSize: 11,
+    ...font('400'),
     marginTop: 6,
     letterSpacing: 0.3,
   },
@@ -486,7 +470,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
     elevation: 8,
@@ -495,9 +479,9 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#0E0E12',
+    color: ON_ACCENT,
     fontSize: 14,
-    fontWeight: '900',
+    ...font('900'),
     letterSpacing: 2,
   },
 
@@ -508,12 +492,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   footerText: {
-    color: '#ffffff',
+    color: MUTED,
     fontSize: 14,
+    ...font('400'),
   },
   footerLink: {
     color: ACCENT,
     fontSize: 14,
-    fontWeight: '700',
+    ...font('700'),
   },
 });

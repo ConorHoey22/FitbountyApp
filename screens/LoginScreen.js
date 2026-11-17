@@ -19,6 +19,10 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { getProfile } from '../lib/GetProfile';
 import { Ionicons } from '@expo/vector-icons';
+import AuthBackground from '../components/AuthBackground';
+import { APP_BG_GRADIENT } from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import { font } from '../utils/fonts';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -100,9 +104,8 @@ export default function LoginScreen() {
     >
       <StatusBar barStyle="light-content" />
 
-      {/* Background blobs */}
-      <View style={styles.blobTopRight} />
-      <View style={styles.blobBottomLeft} />
+      {/* Background */}
+      <AuthBackground colors={BG_GRADIENT} />
 
       {/* Top bar: badge + sign up link */}
       <View style={styles.topBar}>
@@ -129,7 +132,7 @@ export default function LoginScreen() {
           </View>
 
           {/* Form Card */}
-          <View style={styles.card}>
+          <GlassCard style={styles.card} gradient={CARD_GRADIENT}>
             {/* Email */}
           
  
@@ -146,7 +149,7 @@ export default function LoginScreen() {
                 <Ionicons
                   name="mail-outline"
                   size={18}
-                  color={emailFocused ? ACCENT : '#4a4a5a'}
+                  color={emailFocused ? ACCENT : WHITE}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -175,7 +178,7 @@ export default function LoginScreen() {
                 <Ionicons
                   name="lock-closed-outline"
                   size={18}
-                  color={passwordFocused ? ACCENT : '#4a4a5a'}
+                  color={passwordFocused ? ACCENT : WHITE}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -196,7 +199,7 @@ export default function LoginScreen() {
                   <Ionicons
                     name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                     size={18}
-                    color={PLACEHOLDER}
+                    color={WHITE}
                   />
                 </TouchableOpacity>
               </View>
@@ -226,7 +229,7 @@ export default function LoginScreen() {
                 activeOpacity={1}
               >
                 {loading ? (
-                  <ActivityIndicator color="#0E0E12" size="small" />
+                  <ActivityIndicator color={ON_ACCENT} size="small" />
                 ) : (
                   <Text style={styles.buttonText}>SIGN IN →</Text>
                 )}
@@ -243,25 +246,32 @@ export default function LoginScreen() {
             </View>
 
         
-          </View>
+          </GlassCard>
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const ACCENT = '#C6F135';
-const BG = '#0E0E12';
-const SURFACE = '#18181F';
-const BORDER = '#2a2a35';
-const BORDER_FOCUS = '#C6F135';
-const BORDER_ERROR = '#FF4D6D';
-const PLACEHOLDER = '#EDEDED';
+// ─── Palette — black + glass card + soft lime (matches Home) ─────
+const BG_GRADIENT = APP_BG_GRADIENT; // shared — components/ScreenBackground.js
+const CARD_GRADIENT = ['rgba(139,92,246,0.20)', 'rgba(37,99,235,0.06)', 'rgba(37,99,235,0)']; // purple → blue → clear (same as Home cards)
+const TEXT = '#FFFFFF';                      // headings / labels / input text
+const WHITE = '#FFFFFF';
+const MUTED = '#9A9A9E';                     // secondary text / icons
+const PLACEHOLDER = '#FFFFFF';              // placeholder text — white
+const INPUT_BG = 'rgba(255,255,255,0.06)';   // translucent input fill
+const INPUT_BORDER = 'rgba(255,255,255,0.10)';
+const INPUT_FOCUS_BG = 'rgba(255,255,255,0.09)';
+const DIVIDER = 'rgba(255,255,255,0.10)';
+const ACCENT = '#E4F15F';                    // soft lime — main button, focus, links
+const ON_ACCENT = '#1A1A1C';                 // text on lime
+const BORDER_ERROR = '#EF4444';
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: '#000000',
   },
 
   image: {
@@ -273,30 +283,11 @@ const styles = StyleSheet.create({
 
   subtitle: {
     fontSize: 15,
-    color: '#ffffff',
+    ...font('400'),
+    color: WHITE,
     letterSpacing: 0.2,
     textAlign: 'center',
     marginTop: 4,
-  },
-  blobTopRight: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: ACCENT,
-    opacity: 0.06,
-    top: -80,
-    right: -80,
-  },
-  blobBottomLeft: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: '#5B4FE8',
-    opacity: 0.07,
-    bottom: 60,
-    left: -80,
   },
   scrollContent: {
     flexGrow: 1,
@@ -316,8 +307,9 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 54 : 24,
   },
   topBarLink: {
-    color: '#ffffff',
+    color: MUTED,
     fontSize: 13,
+    ...font('400'),
     letterSpacing: 0.2,
   },
 
@@ -329,23 +321,23 @@ const styles = StyleSheet.create({
   },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: ACCENT + '22',
+    backgroundColor: WHITE + '26',
     borderWidth: 1,
-    borderColor: ACCENT + '55',
+    borderColor: WHITE + '66',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
   },
   badgeText: {
-    color: ACCENT,
+    color: WHITE,
     fontSize: 10,
-    fontWeight: '700',
+    ...font('700'),
     letterSpacing: 2,
   },
   title: {
     fontSize: 44,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    ...font('900'),
+    color: WHITE,
     lineHeight: 50,
     letterSpacing: -1,
     marginBottom: 10,
@@ -353,48 +345,46 @@ const styles = StyleSheet.create({
   
 
   // Card
+  // Glass look + edge come from GlassCard
   card: {
-    backgroundColor: SURFACE,
-    borderRadius: 20,
     padding: 24,
-    borderWidth: 1,
-    borderColor: BORDER,
   },
   fieldWrapper: {
     marginBottom: 18,
   },
   label: {
-    color: '#ffffff',
+    color: TEXT,
     fontSize: 12,
-    fontWeight: '700',
+    ...font('700'),
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0E0E12',
+    backgroundColor: INPUT_BG,
     borderWidth: 1.5,
-    borderColor: BORDER,
+    borderColor: INPUT_BORDER,
     borderRadius: 12,
     paddingHorizontal: 14,
   },
   inputFocused: {
-    borderColor: BORDER_FOCUS,
-    backgroundColor: '#13131a',
+    borderColor: ACCENT,
+    backgroundColor: INPUT_FOCUS_BG,
   },
   inputError: {
     borderColor: BORDER_ERROR,
   },
+  // No colour here — it would override the icon's color prop (white / lime when focused)
   inputIcon: {
-    color: PLACEHOLDER,
     marginRight: 10,
   },
   input: {
     flex: 1,
     paddingVertical: 15,
     fontSize: 15,
-    color: '#FFFFFF',
+    ...font('400'),
+    color: TEXT,
     letterSpacing: 0.3,
   },
   eyeIcon: {
@@ -408,11 +398,10 @@ const styles = StyleSheet.create({
     marginTop: -6,
   },
   forgotText: {
-    color: ACCENT,
     fontSize: 1,
-    color: '#ffffff',
+    color: MUTED,
     letterSpacing: 0.2,
-    fontWeight: '600',
+    ...font('600'),
   },
 
   // Error
@@ -430,7 +419,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: BORDER_ERROR,
     fontSize: 13,
-    fontWeight: '500',
+    ...font('500'),
     flex: 1,
   },
 
@@ -441,7 +430,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
     elevation: 8,
@@ -450,9 +439,9 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#0E0E12',
+    color: ON_ACCENT,
     fontSize: 14,
-    fontWeight: '900',
+    ...font('900'),
     letterSpacing: 2,
   },
 
@@ -466,11 +455,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: BORDER,
+    backgroundColor: DIVIDER,
   },
   dividerText: {
-    color: '#ffffff',
+    color: MUTED,
     fontSize: 12,
+    ...font('400'),
     letterSpacing: 0.5,
   },
 
@@ -484,9 +474,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 14,
-    backgroundColor: '#0E0E12',
+    backgroundColor: INPUT_BG,
     borderWidth: 1.5,
-    borderColor: BORDER,
+    borderColor: INPUT_BORDER,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -495,6 +485,6 @@ const styles = StyleSheet.create({
   footerLink: {
     color: ACCENT,
     fontSize: 13,
-    fontWeight: '700',
+    ...font('700'),
   },
 });

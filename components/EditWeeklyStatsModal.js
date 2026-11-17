@@ -1,49 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
+import {
+  getActivityDateKey,
+  getActivityDay,
+  getWeeklyTotals,
+  saveActivityDay,
+} from '../utils/activityHistory';
 
 const EditWeeklyActivityModal = ({ visible, onClose, onSave }) => {
   const [cardioValue, setCardioValue] = useState('');
   const [workoutValue, setWorkoutValue] = useState('');
+  const [stepsValue, setStepsValue] = useState('');
 
   useEffect(() => {
     if (visible) loadCurrentWeeklyTotals();
   }, [visible]);
 
+  // This week's totals, summed from daily_activity rows
   const loadCurrentWeeklyTotals = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
-
-    const { data: profile } = await supabase
-      .from('userProfiles')
-      .select('weeklyCardioCount, weeklyWorkoutCount')
-      .eq('id', session.user.id)
-      .single();
-
-    if (profile) {
-      setCardioValue(String(profile.weeklyCardioCount ?? 0));
-      setWorkoutValue(String(profile.weeklyWorkoutCount ?? 0));
+    try {
+      const week = await getWeeklyTotals();
+      setCardioValue(String(week.cardio));
+      setWorkoutValue(String(week.workouts));
+      setStepsValue(String(week.steps));
+    } catch (err) {
+      console.error('Error loading weekly totals:', err.message);
     }
   };
 
+  // Weekly totals are summed from daily rows, so the correction is applied to
+  // today's row: today += (entered weekly total − current weekly total).
+  // Today can't go below 0, so a total can't drop below what was logged before today.
   const handleSave = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
+    try {
+      const newCardio = Math.max(0, parseInt(cardioValue) || 0);
+      const newWorkouts = Math.max(0, parseInt(workoutValue) || 0);
+      const newSteps = Math.max(0, parseInt(stepsValue) || 0);
 
-    const newCardio = Math.max(0, parseInt(cardioValue) || 0);
-    const newWorkouts = Math.max(0, parseInt(workoutValue) || 0);
+      const [week, today] = await Promise.all([getWeeklyTotals(), getActivityDay()]);
 
-    const { error } = await supabase
-      .from('userProfiles')
-      .update({
-        weeklyCardioCount: newCardio,
-        weeklyWorkoutCount: newWorkouts,
-      })
-      .eq('id', session.user.id);
-
-    if (error) {
-      console.error('Error updating weekly totals:', error.message);
+      await saveActivityDay({
+        date: getActivityDateKey(),
+        cardio: Math.max(0, today.cardio + (newCardio - week.cardio)),
+        workouts: Math.max(0, today.workouts + (newWorkouts - week.workouts)),
+        steps: Math.max(0, today.steps + (newSteps - week.steps)),
+      });
+    } catch (err) {
+      console.error('Error updating weekly totals:', err.message);
       return;
     }
 
@@ -59,7 +63,7 @@ const EditWeeklyActivityModal = ({ visible, onClose, onSave }) => {
           <View style={styles.header}>
             <Text style={styles.title}>Edit Weekly Activity</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color="#A0A0BC" />
+              <Ionicons name="close" size={20} color={INK} />
             </TouchableOpacity>
           </View>
 
@@ -72,6 +76,7 @@ const EditWeeklyActivityModal = ({ visible, onClose, onSave }) => {
             <TextInput
               style={styles.input}
               keyboardType="number-pad"
+              placeholderTextColor={PLACEHOLDER}
               value={cardioValue}
               onChangeText={setCardioValue}
             />
@@ -82,13 +87,25 @@ const EditWeeklyActivityModal = ({ visible, onClose, onSave }) => {
             <TextInput
               style={styles.input}
               keyboardType="number-pad"
+              placeholderTextColor={PLACEHOLDER}
               value={workoutValue}
               onChangeText={setWorkoutValue}
             />
           </View>
 
+          <View style={styles.inputWrapper}>
+            <Text style={styles.label}>Steps</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="number-pad"
+              placeholderTextColor={PLACEHOLDER}
+              value={stepsValue}
+              onChangeText={setStepsValue}
+            />
+          </View>
+
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Ionicons name="checkmark-outline" size={18} color="#0E0E12" />
+            <Ionicons name="checkmark-outline" size={18} color={WHITE} />
             <Text style={styles.saveButtonText}>SAVE CHANGES</Text>
           </TouchableOpacity>
 
@@ -98,41 +115,45 @@ const EditWeeklyActivityModal = ({ visible, onClose, onSave }) => {
   );
 };
 
-const ACCENT = '#C6F135';
-const BG_MODAL = '#1A1A26';
-const SURFACE = '#22222E';
-const SURFACE2 = '#2C2C3C';
-const BORDER = '#42425A';
+// ─── Palette — matches Login / Home (navy, white, black) ─────────
+const NAVY = '#0B1F4D';
+const INK = '#111111';          // primary text / buttons
+const WHITE = '#FFFFFF';
+const SURFACE = '#F2F2F2';      // input rows / close button
+const MUTED = '#8C8C8C';        // secondary text
+const PLACEHOLDER = '#BABABA';
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
+  overlay: { flex: 1, backgroundColor: NAVY + 'CC', justifyContent: 'center', alignItems: 'center' },
   modalContainer: {
-    width: '88%', backgroundColor: BG_MODAL, borderRadius: 22, padding: 22,
-    borderWidth: 1, borderColor: BORDER,
+    width: '88%', backgroundColor: WHITE, borderRadius: 24, padding: 22,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25, shadowRadius: 24, elevation: 12,
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  title: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
+  title: { fontSize: 22, fontWeight: '900', color: INK, letterSpacing: -0.5 },
   closeBtn: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: SURFACE2,
-    borderWidth: 1, borderColor: BORDER, justifyContent: 'center', alignItems: 'center',
+    width: 32, height: 32, borderRadius: 16, backgroundColor: SURFACE,
+    justifyContent: 'center', alignItems: 'center',
   },
-  subtitle: { fontSize: 12, color: '#A0A0BC', marginBottom: 18, lineHeight: 17 },
+  subtitle: { fontSize: 12, color: MUTED, marginBottom: 16, lineHeight: 17 },
   inputWrapper: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: SURFACE, borderRadius: 12, borderWidth: 1, borderColor: BORDER,
-    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12,
+    backgroundColor: SURFACE, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 10, marginBottom: 10,
   },
-  label: { fontSize: 14, fontWeight: '600', color: '#DDDDF0' },
+  label: { fontSize: 15, fontWeight: '700', color: INK },
   input: {
-    width: 80, backgroundColor: SURFACE2, borderWidth: 1.5, borderColor: BORDER,
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7,
-    textAlign: 'center', color: '#FFFFFF', fontSize: 15, fontWeight: '700',
+    minWidth: 80, paddingVertical: 4,
+    textAlign: 'right', color: INK, fontSize: 18, fontWeight: '800',
   },
   saveButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: ACCENT, paddingVertical: 14, borderRadius: 13, gap: 8, marginTop: 6,
+    backgroundColor: INK, paddingVertical: 16, borderRadius: 14, gap: 8, marginTop: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2, shadowRadius: 12, elevation: 6,
   },
-  saveButtonText: { color: '#0E0E12', fontSize: 13, fontWeight: '900', letterSpacing: 1.5 },
+  saveButtonText: { color: WHITE, fontSize: 13, fontWeight: '900', letterSpacing: 1.5 },
 });
 
 export default EditWeeklyActivityModal;

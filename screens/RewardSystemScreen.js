@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { APP_BG_GRADIENT } from '../components/ScreenBackground';
 import {
   View,
   Text,
@@ -14,8 +15,14 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import { M, modalStyles as ms } from '../components/modalTheme';
+import useTabBarSpace from '../utils/useTabBarSpace';
+import { LinearGradient } from 'expo-linear-gradient';
+import { font } from '../utils/fonts';
 
 export default function RewardSystemScreen() {
+  const tabSpace = useTabBarSpace(); // room for the floating tab bar
+
   const navigation = useNavigation();
 
   const [rewards, setRewards] = useState([]);
@@ -24,6 +31,7 @@ export default function RewardSystemScreen() {
   const [userId, setUserId] = useState(null);
 
   // Create reward modal
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newRewardName, setNewRewardName] = useState('');
   const [newRewardXP, setNewRewardXP] = useState('');
@@ -243,49 +251,53 @@ export default function RewardSystemScreen() {
 
     return (
       <View style={[styles.card, item.redeemed && styles.cardRedeemed]}>
+        <LinearGradient
+          colors={CARD_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         <View style={styles.cardTopRow}>
-          <View style={styles.cardTitleRow}>
-            <Text style={styles.rewardName}>{item.reward_name}</Text>
-            {item.redeemed && (
-              <View style={styles.redeemedBadge}>
-                <Ionicons name="checkmark-circle" size={12} color={ACCENT} />
-                <Text style={styles.redeemedBadgeText}>Redeemed</Text>
-              </View>
-            )}
+          {/* Icon */}
+          <View style={[styles.iconCircle, { backgroundColor: (item.redeemed || unlocked ? READY_COLOR : XP_COLOR) + 'CC' }]}>
+            <Ionicons name={item.redeemed ? 'checkmark' : unlocked ? 'gift' : 'lock-closed'} size={18} color={WHITE} />
           </View>
 
+          {/* Name + XP */}
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.rewardName} numberOfLines={2}>{item.reward_name}</Text>
+            <View style={styles.xpRow}>
+              <Ionicons name="flash" size={12} color={XP_COLOR} />
+              <Text style={styles.xpText}>{item.xp_required.toLocaleString()} XP</Text>
+              {item.redeemed && <Text style={styles.redeemedText}> · Redeemed</Text>}
+            </View>
+          </View>
+
+          {/* Edit / delete */}
           <View style={styles.cardActions}>
-         
-
-            <TouchableOpacity onPress={() => handleEditReward(item)} style={styles.editBtn}
-            >
-   
-              <Ionicons name="create-outline" size={18} color="#FFFFFF" />
-              {/* <Text style={styles.editBtnText}>Edit</Text> */}
-            </TouchableOpacity> 
-
-
-
-            
-            <TouchableOpacity onPress={() => deleteReward(item)} style={styles.editBtn}>
-              <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
-              {/* <Text style={styles.editBtnText}>Delete</Text> */}
+            <TouchableOpacity onPress={() => handleEditReward(item)} style={styles.iconBtn} hitSlop={6}>
+              <Ionicons name="create-outline" size={17} color={WHITE} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => deleteReward(item)} style={styles.iconBtn} hitSlop={6}>
+              <Ionicons name="trash-outline" size={16} color={DANGER} />
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.xpRow}>
-          <Ionicons name="flash" size={13} color={unlocked ? ACCENT : '#4a4a5a'} />
-          <Text style={[styles.xpText, unlocked && styles.xpTextUnlocked]}>
-            {item.xp_required.toLocaleString()} XP required
-          </Text>
-        </View>
-
-        {/* XP progress bar */}
+        {/* XP progress */}
         {!item.redeemed && (
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${pct}%` }, !unlocked && styles.progressFillLocked]} />
-          </View>
+          <>
+            <View style={styles.progressLabelRow}>
+              <Text style={styles.progressLabel}>
+                {Math.min(currentXP, item.xp_required).toLocaleString()} / {item.xp_required.toLocaleString()} XP
+              </Text>
+              <Text style={styles.progressLabel}>{Math.round(pct)}%</Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: unlocked ? READY_COLOR : XP_COLOR }]} />
+            </View>
+          </>
         )}
 
         {/* Action */}
@@ -296,13 +308,9 @@ export default function RewardSystemScreen() {
             disabled={!unlocked}
             activeOpacity={0.8}
           >
-            <Ionicons
-              name={unlocked ? 'gift-outline' : 'lock-closed-outline'}
-              size={15}
-              color={unlocked ? '#0E0E12' : '#4a4a5a'}
-            />
-            <Text style={[styles.redeemBtnText, !unlocked && styles.redeemBtnTextLocked]}>
-              {unlocked ? 'REDEEM' : `${Math.round(pct)}% there`}
+            <Ionicons name={unlocked ? 'gift' : 'lock-closed'} size={15} color={WHITE} />
+            <Text style={styles.redeemBtnText}>
+              {unlocked ? 'REDEEM' : `${(item.xp_required - currentXP).toLocaleString()} XP TO GO`}
             </Text>
           </TouchableOpacity>
         )}
@@ -313,7 +321,7 @@ export default function RewardSystemScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={ACCENT} />
+        <ActivityIndicator size="large" color={WHITE} />
       </View>
     );
   }
@@ -321,55 +329,77 @@ export default function RewardSystemScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
-      {/* Blobs */}
-      <View style={styles.blobTopRight} />
-      <View style={styles.blobBottomLeft} />
+      <LinearGradient colors={BG_GRADIENT} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>REWARDS</Text>
-          </View>
-          <Text style={styles.title}>Your Rewards</Text>
-        </View>
+        <Text style={styles.title}>Your Rewards</Text>
 
         {/* XP pill */}
         <View style={styles.xpPill}>
-          <Ionicons name="flash" size={14} color={ACCENT} />
+          <Ionicons name="flash" size={14} color={XP_COLOR} />
           <Text style={styles.xpPillText}>{currentXP.toLocaleString()} XP</Text>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.xpPill}>
-        <Ionicons name="information-circle-outline" size={20} color={ACCENT} />
-        <Text style={styles.xpPillText}>Why have a Reward System?</Text>
+      <TouchableOpacity style={styles.infoRow} activeOpacity={0.7} onPress={() => setShowInfoModal(true)}>
+        <Ionicons name="information-circle-outline" size={18} color={WHITE} />
+        <Text style={styles.infoText}>Why have a Reward System?</Text>
       </TouchableOpacity>
+
+      {/* ── Create button ── */}
+      <View style={styles.createWrapper}>
+        <TouchableOpacity style={styles.fab} onPress={() => setShowCreateModal(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={20} color={INK} />
+          <Text style={styles.fabText}>CREATE REWARD</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* ── List ── */}
       <FlatList
         data={rewards}
         renderItem={renderReward}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 30 + tabSpace }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
-            <Ionicons name="gift-outline" size={40} color="#42425A" />
+            <View style={[styles.iconCircle, styles.emptyIcon]}>
+              <Ionicons name="gift" size={26} color={WHITE} />
+            </View>
             <Text style={styles.emptyTitle}>No rewards yet</Text>
             <Text style={styles.emptySubtitle}>Create your first reward to get motivated!</Text>
           </View>
         }
       />
 
-      {/* ── Create button ── */}
-      <View style={styles.fabWrapper}>
-        <TouchableOpacity style={styles.fab} onPress={() => setShowCreateModal(true)} activeOpacity={0.85}>
-          <Ionicons name="add-outline" size={20} color="#0E0E12" />
-          <Text style={styles.fabText}>CREATE REWARD</Text>
-        </TouchableOpacity>
-      </View>
+      {/* ── Why have a Reward System? Modal ── */}
+      <Modal
+        visible={showInfoModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowInfoModal(false)}
+      >
+        <View style={ms.overlay}>
+          <View style={ms.card}>
+            <View style={[ms.header, { marginBottom: 16 }]}>
+              <View style={ms.headerLeft}>
+                <Text style={ms.title}>Why have a Reward System?</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowInfoModal(false)} style={ms.closeBtn} hitSlop={10}>
+                <Ionicons name="close" size={20} color={M.INK} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.infoBody}>
+              The brain’s reward system is a network of regions and pathways that drives how we feel pleasure, form habits, and motivate behavior.
+            </Text>
+            <Text style={[styles.infoBody, { marginBottom: 0 }]}>
+              It works by releasing chemicals (like dopamine) in response to rewarding activities, whether it’s eating, socializing, or achieving a goal. This evolved mechanism reinforces behaviors that are beneficial or enjoyable by making us feel good when we do them.
+            </Text>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Create Reward Modal ── */}
       <Modal
@@ -378,38 +408,38 @@ export default function RewardSystemScreen() {
         transparent
         onRequestClose={() => setShowCreateModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+        <View style={ms.overlay}>
+          <View style={ms.card}>
 
-            <View style={styles.modalHeader}>
-              <View>
-                <View style={styles.modalBadge}>
-                  <Text style={styles.modalBadgeText}>NEW REWARD</Text>
+            <View style={[ms.header, { marginBottom: 16 }]}>
+              <View style={ms.headerLeft}>
+                <View style={ms.badge}>
+                  <Text style={ms.badgeText}>NEW REWARD</Text>
                 </View>
-                <Text style={styles.modalTitle}>Create Reward</Text>
+                <Text style={ms.title}>Create Reward</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowCreateModal(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={18} color="#A0A0BC" />
+              <TouchableOpacity onPress={() => setShowCreateModal(false)} style={ms.closeBtn} hitSlop={10}>
+                <Ionicons name="close" size={20} color={M.INK} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.fieldWrapper}>
-              <Text style={styles.fieldLabel}>REWARD NAME</Text>
+              <Text style={ms.fieldLabel}>REWARD NAME</Text>
               <TextInput
-                style={styles.input}
+                style={ms.textInput}
                 placeholder="e.g. New Shoes"
-                placeholderTextColor="#4a4a5a"
+                placeholderTextColor={M.PLACEHOLDER}
                 value={newRewardName}
                 onChangeText={setNewRewardName}
               />
             </View>
 
             <View style={styles.fieldWrapper}>
-              <Text style={styles.fieldLabel}>XP REQUIRED</Text>
+              <Text style={ms.fieldLabel}>XP REQUIRED</Text>
               <TextInput
-                style={styles.input}
+                style={ms.textInput}
                 placeholder="e.g. 500"
-                placeholderTextColor="#4a4a5a"
+                placeholderTextColor={M.PLACEHOLDER}
                 keyboardType="number-pad"
                 value={newRewardXP}
                 onChangeText={setNewRewardXP}
@@ -417,15 +447,15 @@ export default function RewardSystemScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+              style={[ms.saveButton, { marginTop: 4 }, saving && ms.saveButtonDisabled]}
               onPress={handleCreateReward}
               disabled={saving}
               activeOpacity={0.85}
             >
               {saving ? (
-                <ActivityIndicator color="#0E0E12" size="small" />
+                <ActivityIndicator color={M.WHITE} size="small" />
               ) : (
-                <Text style={styles.saveBtnText}>SAVE REWARD</Text>
+                <Text style={ms.saveButtonText}>Save Reward</Text>
               )}
             </TouchableOpacity>
 
@@ -440,38 +470,38 @@ export default function RewardSystemScreen() {
         transparent
         onRequestClose={() => setShowEditModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+        <View style={ms.overlay}>
+          <View style={ms.card}>
 
-            <View style={styles.modalHeader}>
-              <View>
-                <View style={styles.modalBadge}>
-                  <Text style={styles.modalBadgeText}>EDIT REWARD</Text>
+            <View style={[ms.header, { marginBottom: 16 }]}>
+              <View style={ms.headerLeft}>
+                <View style={ms.badge}>
+                  <Text style={ms.badgeText}>EDIT REWARD</Text>
                 </View>
-                <Text style={styles.modalTitle}>Edit Reward</Text>
+                <Text style={ms.title}>Edit Reward</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowEditModal(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={18} color="#A0A0BC" />
+              <TouchableOpacity onPress={() => setShowEditModal(false)} style={ms.closeBtn} hitSlop={10}>
+                <Ionicons name="close" size={20} color={M.INK} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.fieldWrapper}>
-              <Text style={styles.fieldLabel}>REWARD NAME</Text>
+              <Text style={ms.fieldLabel}>REWARD NAME</Text>
               <TextInput
-                style={styles.input}
+                style={ms.textInput}
                 placeholder="e.g. New Shoes"
-                placeholderTextColor="#4a4a5a"
+                placeholderTextColor={M.PLACEHOLDER}
                 value={editRewardName}
                 onChangeText={setEditRewardName}
               />
             </View>
 
             <View style={styles.fieldWrapper}>
-              <Text style={styles.fieldLabel}>XP REQUIRED</Text>
+              <Text style={ms.fieldLabel}>XP REQUIRED</Text>
               <TextInput
-                style={styles.input}
+                style={ms.textInput}
                 placeholder="e.g. 500"
-                placeholderTextColor="#4a4a5a"
+                placeholderTextColor={M.PLACEHOLDER}
                 keyboardType="number-pad"
                 value={editRewardXP}
                 onChangeText={setEditRewardXP}
@@ -479,15 +509,15 @@ export default function RewardSystemScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.saveBtn, savingEdit && { opacity: 0.6 }]}
+              style={[ms.saveButton, { marginTop: 4 }, savingEdit && ms.saveButtonDisabled]}
               onPress={handleSaveEdit}
               disabled={savingEdit}
               activeOpacity={0.85}
             >
               {savingEdit ? (
-                <ActivityIndicator color="#0E0E12" size="small" />
+                <ActivityIndicator color={M.WHITE} size="small" />
               ) : (
-                <Text style={styles.saveBtnText}>UPDATE REWARD</Text>
+                <Text style={ms.saveButtonText}>Update Reward</Text>
               )}
             </TouchableOpacity>
 
@@ -499,97 +529,76 @@ export default function RewardSystemScreen() {
   );
 }
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
-const ACCENT   = '#C6F135';
-const BG       = '#0E0E12';
-const CARD     = '#22222E';
-const SURFACE2 = '#2C2C3C';
-const BORDER   = '#42425A';
+// ─── Palette — dark purple → black page, dark cards ──────────────────────────
+// Other versions tried: purple → blue ['#2E1065', '#0B1F4D'];
+// warm off-white '#FAF7F2' (with black header text)
+const BG_GRADIENT = APP_BG_GRADIENT; // shared — components/ScreenBackground.js
+const BG          = '#000000';                  // shown while loading / behind the gradient
+const INK         = '#111111';                  // primary text
+const WHITE       = '#FFFFFF';
+const CARD_BG     = '#1C1C1E';                  // dark cards
+const CARD_GRADIENT = ['rgba(37,99,235,0.30)', 'rgba(37,99,235,0.12)', 'rgba(37,99,235,0.04)']; // blue tint (was purple → blue, as on Home)
+const BORDER      = 'rgba(255,255,255,0.16)';   // edges of pills on the page
+const CARD_BORDER = 'rgba(255,255,255,0.12)';   // edges inside dark cards
+const CARD_ROW_BG = 'rgba(255,255,255,0.08)';   // inner rows / track / small buttons inside dark cards
+const XP_COLOR    = '#FF7722';                  // orange — same as the XP level ring on Home
+const READY_COLOR = '#16A34A';                  // green — enough XP / redeemed (Home's goal reached)
+const DANGER      = '#EF4444';
+const ROW_BG      = 'rgba(255,255,255,0.10)';   // pills on the page
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
   center:    { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: BG },
 
-  blobTopRight:   { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: ACCENT, opacity: 0.05, top: -80, right: -80 },
-  blobBottomLeft: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: '#5B4FE8', opacity: 0.06, bottom: 60, left: -80 },
-
   // Header
-  header:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 64, paddingBottom: 20 },
-  badge:    { alignSelf: 'flex-start', backgroundColor: ACCENT + '22', borderWidth: 1, borderColor: ACCENT + '55', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 8 },
-  badgeText:{ color: ACCENT, fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
-  title:    { fontSize: 32, fontWeight: '900', color: '#FFFFFF', letterSpacing: -1 },
-  subtitle: { fontSize: 14, color: '#A0A0BC', marginTop: 4 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 64, paddingBottom: 12 },
+  title:  { fontSize: 28, ...font('800'), color: WHITE, letterSpacing: -0.5 },
 
-  xpPill:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ACCENT + '18', borderWidth: 1, borderColor: ACCENT + '44', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
-  xpPillText: { color: ACCENT, fontSize: 14, fontWeight: '800' },
+  xpPill:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ROW_BG, borderWidth: 1, borderColor: BORDER, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  xpPillText: { color: WHITE, fontSize: 15, ...font('800') },
 
-  listContent: { paddingHorizontal: 20, paddingBottom: 120 },
+  infoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginHorizontal: 20, marginBottom: 18, backgroundColor: ROW_BG, borderWidth: 1, borderColor: BORDER, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+  infoText: { color: WHITE, fontSize: 13, ...font('600') },
+  infoBody: { color: INK, fontSize: 15, lineHeight: 22, ...font('400'), marginBottom: 12 },
+
+  listContent: { paddingHorizontal: 20 },
 
   // Reward card
-  card:         { backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 16, marginBottom: 14 },
-  cardRedeemed: { borderColor: ACCENT + '44', opacity: 0.7 },
+  card:         { backgroundColor: CARD_BG, borderRadius: 22, borderWidth: 1, borderColor: CARD_BORDER, padding: 16, marginBottom: 14, overflow: 'hidden', shadowColor: '#000000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 },
+  cardRedeemed: { opacity: 0.6 },
 
-  cardTopRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  cardTitleRow: { flex: 1, gap: 6 },
-  rewardName:   { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
-  redeemedBadge:     { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: ACCENT + '18', borderWidth: 1, borderColor: ACCENT + '44', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  redeemedBadgeText: { color: ACCENT, fontSize: 11, fontWeight: '700' },
+  cardTopRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  iconCircle:   { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  cardTitleRow: { flex: 1, gap: 3 },
+  rewardName:   { fontSize: 17, ...font('700'), color: WHITE },
+  xpRow:        { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  xpText:       { fontSize: 13, color: WHITE, ...font('600') },
+  redeemedText: { fontSize: 13, color: READY_COLOR, ...font('700') },
 
   cardActions: { flexDirection: 'row', gap: 8 },
-  
-  editBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  
-  editBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  deleteBtn: { padding: 4 },
+  iconBtn:     { width: 34, height: 34, borderRadius: 17, backgroundColor: CARD_ROW_BG, borderWidth: 1, borderColor: CARD_BORDER, alignItems: 'center', justifyContent: 'center' },
 
-  xpRow:         { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10 },
-  xpText:        { fontSize: 13, color: '#4a4a5a', fontWeight: '600' },
-  xpTextUnlocked:{ color: ACCENT },
+  // Progress
+  progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  progressLabel:    { fontSize: 12, color: WHITE, ...font('600') },
+  progressTrack:    { height: 6, backgroundColor: CARD_ROW_BG, borderRadius: 3, marginBottom: 14, overflow: 'hidden' },
+  progressFill:     { height: '100%', borderRadius: 3 },
 
-  progressTrack:      { height: 3, backgroundColor: SURFACE2, borderRadius: 2, marginBottom: 12, overflow: 'hidden' },
-  progressFill:       { height: '100%', backgroundColor: ACCENT, borderRadius: 2 },
-  progressFillLocked: { backgroundColor: '#42425A' },
-
-  redeemBtn:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT, paddingVertical: 11, borderRadius: 11, gap: 7, shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.28, shadowRadius: 10, elevation: 5 },
-  redeemBtnLocked:    { backgroundColor: SURFACE2, shadowOpacity: 0 },
-  redeemBtnText:      { color: '#0E0E12', fontSize: 12, fontWeight: '900', letterSpacing: 1.2 },
-  redeemBtnTextLocked:{ color: '#4a4a5a' },
+  // Redeem
+  redeemBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: READY_COLOR, paddingVertical: 12, borderRadius: 999, gap: 7 },
+  redeemBtnLocked: { backgroundColor: CARD_ROW_BG, borderWidth: 1, borderColor: CARD_BORDER },
+  redeemBtnText:   { color: WHITE, fontSize: 12, ...font('800'), letterSpacing: 1.2 },
 
   // Empty state
-  emptyBox:     { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyTitle:   { fontSize: 18, fontWeight: '700', color: '#DDDDF0' },
-  emptySubtitle:{ fontSize: 14, color: '#A0A0BC', textAlign: 'center' },
+  emptyBox:      { alignItems: 'center', paddingTop: 60, gap: 10 },
+  emptyIcon:     { width: 60, height: 60, borderRadius: 30, backgroundColor: XP_COLOR + 'CC', marginBottom: 4 },
+  emptyTitle:    { fontSize: 18, ...font('700'), color: WHITE },
+  emptySubtitle: { fontSize: 14, color: WHITE, ...font('400'), textAlign: 'center' },
 
-  // FAB
-  fabWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 18, backgroundColor: BG, borderTopWidth: 1, borderTopColor: BORDER },
-  fab:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT, paddingVertical: 15, borderRadius: 14, gap: 8, shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 8 },
-  fabText:    { color: '#0E0E12', fontSize: 13, fontWeight: '900', letterSpacing: 1.5 },
-
-  // Modal
-  modalOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
-  modalContainer: { width: '88%', backgroundColor: '#18181F', borderRadius: 22, padding: 22, borderWidth: 1, borderColor: BORDER },
-  modalHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 },
-  modalBadge:     { alignSelf: 'flex-start', backgroundColor: ACCENT + '22', borderWidth: 1, borderColor: ACCENT + '55', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginBottom: 6 },
-  modalBadgeText: { color: ACCENT, fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
-  modalTitle:     { fontSize: 22, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.5 },
-  closeBtn:       { width: 32, height: 32, borderRadius: 16, backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER, justifyContent: 'center', alignItems: 'center' },
+  // Create button
+  createWrapper: { paddingHorizontal: 20, marginBottom: 18 },
+  fab:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: WHITE, borderRadius: 999, paddingVertical: 15, gap: 8 },
+  fabText:    { color: INK, fontSize: 13, ...font('800'), letterSpacing: 1.5 },
 
   fieldWrapper: { marginBottom: 16 },
-  fieldLabel:   { color: '#A0A0BC', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 },
-  input:        { backgroundColor: SURFACE2, borderWidth: 1.5, borderColor: BORDER, borderRadius: 12, padding: 14, color: '#FFFFFF', fontSize: 15, fontWeight: '500' },
-
-  saveBtn:     { backgroundColor: ACCENT, paddingVertical: 15, borderRadius: 13, alignItems: 'center', marginTop: 4, shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
-  saveBtnText: { color: '#0E0E12', fontSize: 13, fontWeight: '900', letterSpacing: 1.5 },
 });

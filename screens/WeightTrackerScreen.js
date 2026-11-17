@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ScreenBackground from '../components/ScreenBackground';
 import {
   View,
   Text,
@@ -14,6 +15,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
+import { M, modalStyles as ms } from '../components/modalTheme';
+import { font } from '../utils/fonts';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -109,10 +112,7 @@ export default function WeightTrackerScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
-      {/* Decorative blobs */}
-      <View style={styles.blobTopRight} />
-      <View style={styles.blobBottomLeft} />
+      <ScreenBackground />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
@@ -240,30 +240,30 @@ export default function WeightTrackerScreen() {
         transparent
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+        <View style={ms.overlay}>
+          <View style={ms.card}>
             {/* Modal header */}
-            <View style={styles.modalHeader}>
-              <View>
-                <View style={styles.modalBadge}>
-                  <Text style={styles.modalBadgeText}>LOG WEIGHT</Text>
+            <View style={[ms.header, { marginBottom: 16 }]}>
+              <View style={ms.headerLeft}>
+                <View style={ms.badge}>
+                  <Text style={ms.badgeText}>LOG WEIGHT</Text>
                 </View>
-                <Text style={styles.modalTitle}>Enter Weight</Text>
+                <Text style={ms.title}>Enter Weight</Text>
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={18} color="#A0A0BC" />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={ms.closeBtn} hitSlop={10}>
+                <Ionicons name="close" size={20} color={M.INK} />
               </TouchableOpacity>
             </View>
 
             {/* Unit toggle in modal */}
-            <View style={styles.toggleWrapper}>
+            <View style={modal.toggleWrapper}>
               {['kg', 'lbs', 'st'].map((value) => (
                 <TouchableOpacity
                   key={value}
-                  style={[styles.toggleButton, inputUnit === value && styles.activeToggle]}
+                  style={[modal.toggleButton, inputUnit === value && modal.activeToggle]}
                   onPress={() => setInputUnit(value)}
                 >
-                  <Text style={[styles.toggleText, inputUnit === value && styles.activeToggleText]}>
+                  <Text style={[modal.toggleText, inputUnit === value && modal.activeToggleText]}>
                     {value}
                   </Text>
                 </TouchableOpacity>
@@ -274,22 +274,22 @@ export default function WeightTrackerScreen() {
             {inputUnit === 'st' ? (
               <View style={styles.stoneWrapper}>
                 <View style={[styles.fieldWrapper, { flex: 1, marginRight: 8 }]}>
-                  <Text style={styles.fieldLabel}>STONE</Text>
+                  <Text style={ms.fieldLabel}>STONE</Text>
                   <TextInput
-                    style={styles.input}
+                    style={ms.textInput}
                     placeholder="e.g. 11"
-                    placeholderTextColor="#4a4a5a"
+                    placeholderTextColor={M.PLACEHOLDER}
                     keyboardType="numeric"
                     value={stoneInput}
                     onChangeText={setStoneInput}
                   />
                 </View>
                 <View style={[styles.fieldWrapper, { flex: 1, marginLeft: 8 }]}>
-                  <Text style={styles.fieldLabel}>LBS</Text>
+                  <Text style={ms.fieldLabel}>LBS</Text>
                   <TextInput
-                    style={styles.input}
+                    style={ms.textInput}
                     placeholder="e.g. 6"
-                    placeholderTextColor="#4a4a5a"
+                    placeholderTextColor={M.PLACEHOLDER}
                     keyboardType="numeric"
                     value={lbsInput}
                     onChangeText={setLbsInput}
@@ -298,11 +298,11 @@ export default function WeightTrackerScreen() {
               </View>
             ) : (
               <View style={styles.fieldWrapper}>
-                <Text style={styles.fieldLabel}>{inputUnit.toUpperCase()}</Text>
+                <Text style={ms.fieldLabel}>{inputUnit.toUpperCase()}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={ms.textInput}
                   placeholder={`Enter weight in ${inputUnit}`}
-                  placeholderTextColor="#4a4a5a"
+                  placeholderTextColor={M.PLACEHOLDER}
                   keyboardType="numeric"
                   value={inputWeight}
                   onChangeText={setInputWeight}
@@ -311,14 +311,14 @@ export default function WeightTrackerScreen() {
             )}
 
             {/* XP note */}
-            <View style={styles.xpNote}>
-              <Ionicons name="flash" size={13} color={ACCENT} />
-              <Text style={styles.xpNoteText}>Earn 100 XP for logging today</Text>
+            <View style={modal.xpNote}>
+              <Ionicons name="flash" size={13} color={M.NAVY} />
+              <Text style={modal.xpNoteText}>Earn 100 XP for logging today</Text>
             </View>
 
             {/* Buttons */}
-            <TouchableOpacity style={styles.saveBtn} onPress={saveWeight} activeOpacity={0.85}>
-              <Text style={styles.saveBtnText}>SAVE ENTRY</Text>
+            <TouchableOpacity style={ms.saveButton} onPress={saveWeight} activeOpacity={0.85}>
+              <Text style={ms.saveButtonText}>Save Entry</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -414,4 +414,43 @@ const styles = StyleSheet.create({
   xpNoteText:     { color: '#A0A0BC', fontSize: 12, fontWeight: '600' },
   saveBtn:        { backgroundColor: ACCENT, paddingVertical: 15, borderRadius: 13, alignItems: 'center', shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
   saveBtnText:    { color: '#0E0E12', fontSize: 13, fontWeight: '900', letterSpacing: 1.5 },
+});
+
+// Modal-only styles (Add Food design) — the screen's own toggle/inputs are unchanged
+const modal = StyleSheet.create({
+  toggleWrapper: {
+    flexDirection: 'row',
+    backgroundColor: M.SURFACE,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 9,
+    alignItems: 'center',
+  },
+  activeToggle: {
+    backgroundColor: M.INK,
+  },
+  toggleText: {
+    color: M.MUTED,
+    fontSize: 13,
+    ...font('700'),
+  },
+  activeToggleText: {
+    color: M.WHITE,
+  },
+  xpNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 16,
+  },
+  xpNoteText: {
+    color: M.MUTED,
+    fontSize: 12,
+    ...font('600'),
+  },
 });

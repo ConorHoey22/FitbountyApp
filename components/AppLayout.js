@@ -14,7 +14,7 @@ export default function AppLayout({ children, title }) {
         <TopActionBar
           title={"FitBounty"}
           onNotificationPress={() => navigation.navigate('Home')}
-          onProfilePress={() => navigation.navigate('ProfileScreen')}
+          onProfilePress={() => navigation.navigate('MyHealth')}
         />
         <View style={styles.content}>{children}</View>
       </View>

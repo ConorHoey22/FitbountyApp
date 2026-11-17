@@ -5,22 +5,25 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppLayout from './components/AppLayout';
+import { Ionicons } from '@expo/vector-icons';
+import LoadingScreen from './components/LoadingScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import Home from './screens/Home';
 import WorkoutsScreen from './screens/WorkoutsScreen';
 import WorkoutModeScreen from './screens/WorkoutModeScreen';
-import ProfileScreen from './screens/ProfileScreen';
+import MyHealthScreen from './screens/MyHealthScreen';
 import PlanYourWeekScreen from './screens/PlanYourWeekScreen';
 import CreateMyPlan from './screens/CreateMyPlan'; 
 import CreateUserPlan from './screens/CreateUserPlan';
 import WeightTrackerScreen from './screens/WeightTrackerScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import CreateWorkoutScreen from './screens/CreateWorkoutScreen';
+import PRScreen from './screens/PRScreen';
 import RewardSystemScreen from './screens/RewardSystemScreen';
 
 
@@ -40,6 +43,18 @@ const MyDarkTheme = {
     primary: '#4CAF50',
   },
 };
+
+// Bottom tab icons (always filled)
+const TAB_ICONS = {
+  Home: 'home',
+  MyHealth: 'heart',
+  Rewards: 'gift',
+  Workouts: 'fitness',
+  PlanYourWeekScreen: 'calendar',
+};
+
+const TAB_ACTIVE = '#0A84FF';   // iOS system blue
+const TAB_INACTIVE = '#8E8E93'; // iOS system grey
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -62,38 +77,26 @@ function AuthStack() {
 }
 
 function AppTabs() {
+  // Which tab screen is showing — Workout Mode is a hidden tab, so the Workouts
+  // icon is lit manually while it's open
+  // (Screens are passed directly, not via withLayout(), so this state change
+  // doesn't create new components and remount them.)
+  const [focusedTab, setFocusedTab] = useState('Home');
+
   return (
     <Tab.Navigator
+      screenListeners={({ route }) => ({
+        focus: () => setFocusedTab(route.name),
+      })}
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'Workouts') iconName = focused ? 'fitness' : 'fitness-outline';
-          else if (route.name === 'Rewards') iconName = focused ? 'gift' : 'gift-outline';
-          else if (route.name === 'ProfileScreen') iconName = focused ? 'person' : 'person-circle-outline';
-          else if (route.name === 'PlanYourWeekScreen') iconName = focused ? 'calendar' : 'calendar-outline';
+        // Standard iOS tab bar (dark) — system blue active, system grey inactive
+        tabBarIcon: ({ color, size }) => (
+          <Ionicons name={TAB_ICONS[route.name] || 'ellipse'} size={size} color={color} />
+        ),
+        tabBarActiveTintColor: TAB_ACTIVE,
+        tabBarInactiveTintColor: TAB_INACTIVE,
+        tabBarStyle: { backgroundColor: '#000000', borderTopColor: '#2C2C2E' },
 
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#C6FF00', // lime green
-        tabBarInactiveTintColor: '#ffffff',
-        
-        tabBarStyle: {
-          backgroundColor: '#000000',
-          borderTopWidth: 1,
-          borderTopColor: '#1A1A1A',
-          height: 75,          // increase height
-          paddingBottom: 10,   // pushes content up
-          paddingTop: 8,
-        },
-        
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '700',
-          letterSpacing: 0.3,
-          marginBottom: 4,     // moves text upward
-        },
-        
         headerStyle: {
           backgroundColor: '#000000',
         },
@@ -107,14 +110,27 @@ function AppTabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={withLayout(Home, 'Home')} options={{ headerShown: false }} />
-      <Tab.Screen name="ProfileScreen" component={withLayout(ProfileScreen, 'ProfileScreen')} options={{ headerShown: false , tabBarLabel: 'Profile' }} />
-      <Tab.Screen name="Rewards" component={withLayout(RewardSystemScreen, 'Rewards')} options={{ headerShown: false , tabBarLabel: 'Rewards'}} />
-      <Tab.Screen name="Workouts" component={withLayout(WorkoutsScreen, 'Workouts')} options={{ headerShown: false }} />
-      <Tab.Screen name="PlanYourWeekScreen" component={withLayout(PlanYourWeekScreen, 'PlanYourWeekScreen')} options={{ headerShown: false , tabBarLabel: 'Planner'}} />
+      <Tab.Screen name="Home" component={Home} options={{ headerShown: false }} />
+      <Tab.Screen name="MyHealth" component={MyHealthScreen} options={{ headerShown: false , tabBarLabel: 'My Health' }} />
+      <Tab.Screen name="Rewards" component={RewardSystemScreen} options={{ headerShown: false , tabBarLabel: 'Rewards'}} />
+      <Tab.Screen
+        name="Workouts"
+        component={WorkoutsScreen}
+        options={{
+          headerShown: false,
+          // Show Workouts as selected while Workout Mode is open. The tab bar takes
+          // its tint colours from the focused screen (Workout Mode), so the icon
+          // and label colour are set here per tab instead.
+          ...(focusedTab === 'WorkoutModeScreen' && {
+            tabBarIcon: ({ size }) => <Ionicons name={TAB_ICONS.Workouts} size={size} color={TAB_ACTIVE} />,
+            tabBarLabelStyle: { color: TAB_ACTIVE },
+          }),
+        }}
+      />
+      <Tab.Screen name="PlanYourWeekScreen" component={PlanYourWeekScreen} options={{ headerShown: false , tabBarLabel: 'Planner'}} />
 
-      <Tab.Screen name="UpdateMacrosPlan" component={withLayout(UpdateMacrosPlan, 'UpdateMacrosPlan')} options={{ headerShown: false ,tabBarButton: () => null }} />
-      <Tab.Screen name="WorkoutModeScreen" component={withLayout(WorkoutModeScreen,'WorkoutModeScreen')} options={{ headerShown:false, tabBarButton: () => null }} />
+      <Tab.Screen name="UpdateMacrosPlan" component={UpdateMacrosPlan} options={{ headerShown: false ,tabBarButton: () => null }} />
+      <Tab.Screen name="WorkoutModeScreen" component={WorkoutModeScreen} options={{ headerShown:false, tabBarButton: () => null }} />
       
     </Tab.Navigator>
   );
@@ -135,13 +151,16 @@ function AppStack() {
       <Stack.Screen name="WeightTrackerScreen" component={withLayout(WeightTrackerScreen,'WeightTrackerScreen')} options={{ title: 'Track your Weight' }} />
 
       <Stack.Screen name="RewardSystemScreen" component={withLayout(RewardSystemScreen,'RewardSystemScreen')} options={{ title: 'Your Reward System'}} />
-      <Stack.Screen name="SettingsScreen" component={withLayout(SettingsScreen,'SettingsScreen')} options={{ title: 'Settings'}} />
+      <Stack.Screen name="CreateWorkoutScreen" component={CreateWorkoutScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PRScreen" component={PRScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SettingsScreen" component={withLayout(SettingsScreen,'SettingsScreen')} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
 
 export default function App() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
@@ -169,8 +188,6 @@ export default function App() {
     };
   }, []);
 
-  if (isCheckingSession) return null;
-
   return (
     <SafeAreaProvider>
 
@@ -180,10 +197,15 @@ export default function App() {
           barStyle="light-content"
         />
 
-        <NavigationContainer theme={MyDarkTheme}>
-          {hasSession ? <AppStack /> : <AuthStack />}
-        </NavigationContainer>
-        
+        {/* Logo loading screen (no animation) while the session check runs */}
+        {isCheckingSession ? (
+          <LoadingScreen />
+        ) : (
+          <NavigationContainer theme={MyDarkTheme}>
+            {hasSession ? <AppStack /> : <AuthStack />}
+          </NavigationContainer>
+        )}
+
     </SafeAreaProvider>
   );
 }

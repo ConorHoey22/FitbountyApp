@@ -1,291 +1,233 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Modal,
   StyleSheet,
   View,
   Text,
-  Pressable,
-  TextInput,
   TouchableOpacity,
+  Animated,
+  Easing,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
-import { getISOWeekKey } from '../utils/weeklyKeyCreate'; // ← add this import
 
+// Level-up popup — shown when an XP award takes the user to a new level
+const XPRewardSuccessModal = ({ visible, level, onClose }) => {
+  const cardScale = useRef(new Animated.Value(0.6)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const iconScale = useRef(new Animated.Value(0)).current;
+  const burst = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
 
+  const accent = LEVEL_COLOR;
 
-const XPRewardSuccessModal = ({ visible, onClose, onSave, rewardNotficationType }) => {
-  
+  // Replay the entrance every time the popup opens
+  useEffect(() => {
+    if (!visible || level == null) return;
 
-//   useEffect(() => {
-  
-//   };
+    cardScale.setValue(0.6);
+    cardOpacity.setValue(0);
+    iconScale.setValue(0);
+    burst.setValue(0);
+    pulse.setValue(0);
 
-//  
-const [currentCardio, setCurrentCardio] = useState(100);
+    Animated.parallel([
+      Animated.spring(cardScale, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
+      Animated.timing(cardOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
 
+    Animated.sequence([
+      Animated.delay(150),
+      Animated.spring(iconScale, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
+    ]).start();
 
-  
+    Animated.sequence([
+      Animated.delay(200),
+      Animated.timing(burst, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]).start();
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    );
+    pulseLoop.start();
+
+    return () => pulseLoop.stop();
+  }, [visible, level]);
+
+  if (level == null) return null;
+
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+        <Animated.View style={[styles.card, { opacity: cardOpacity, transform: [{ scale: cardScale }] }]}>
 
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Reward </Text>
-              </View>
-              <Text style={styles.title}>Good Job!</Text>
-            </View>
-            <Pressable onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color="#A0A0BC" />
-            </Pressable>
+          {/* Icon with burst + pulse ring */}
+          <View style={styles.iconArea}>
+            {BURST_DOTS.map((angle, i) => {
+              const rad = (angle * Math.PI) / 180;
+              const distance = i % 2 === 0 ? 70 : 54;
+              return (
+                <Animated.View
+                  key={angle}
+                  style={[
+                    styles.burstDot,
+                    {
+                      backgroundColor: i % 3 === 0 ? NAVY : accent,
+                      opacity: burst.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 0] }),
+                      transform: [
+                        { translateX: burst.interpolate({ inputRange: [0, 1], outputRange: [0, Math.cos(rad) * distance] }) },
+                        { translateY: burst.interpolate({ inputRange: [0, 1], outputRange: [0, Math.sin(rad) * distance] }) },
+                        { scale: burst.interpolate({ inputRange: [0, 1], outputRange: [1, 0.4] }) },
+                      ],
+                    },
+                  ]}
+                />
+              );
+            })}
+
+            <Animated.View
+              style={[
+                styles.pulseRing,
+                {
+                  borderColor: accent,
+                  opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }),
+                  transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] }) }],
+                },
+              ]}
+            />
+
+            <Animated.View style={[styles.iconCircle, { backgroundColor: accent, transform: [{ scale: iconScale }] }]}>
+              <Text style={styles.levelNumber}>{level}</Text>
+            </Animated.View>
           </View>
 
-          <Text style={styles.subtitle}>
-           {rewardNotficationType} XP Reward - 100XP 
+          {/* Text */}
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>LEVEL UP</Text>
+          </View>
+
+          <Text style={styles.title}>
+            You reached Level {level}!
           </Text>
 
-          {/* Current Progress */}
-          <View style={styles.progressCard}>
-            <Text style={styles.progressTitle}>You acheived your weekly cardio goal </Text>
-            <View style={styles.progressRow}>
-              <View style={styles.progressItem}>
-                <Ionicons name="bicycle-outline" size={18} color={ACCENT} />
-                <Text style={styles.progressValue}>{currentCardio}</Text>
-                <Text style={styles.progressLabel}>XP has been added to your account , Go check your reward system!</Text>
-              </View>
-             
-            </View>
-          </View>
+          <Text style={styles.subtitle}>
+            Keep it up — your next level is waiting.
+          </Text>
 
+          <TouchableOpacity style={styles.button} onPress={onClose} activeOpacity={0.85}>
+            <Text style={styles.buttonText}>Nice!</Text>
+          </TouchableOpacity>
 
-
-     
-
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
 };
 
-const ActivityInput = ({ icon, iconColor, label, value, onChange }) => (
-  <View style={styles.inputWrapper}>
-    <View style={styles.inputLabel}>
-      <Ionicons name={icon} size={16} color={iconColor} />
-      <Text style={styles.label}>{label}</Text>
-    </View>
-    <TextInput
-      style={styles.input}
-      placeholder="0"
-      placeholderTextColor="#4a4a5a"
-      keyboardType="number-pad"
-      value={value}
-      onChangeText={onChange}
-    />
-  </View>
-);
+// ─── Palette — matches Login / Home (navy, white, black) ─────────────────────
+const NAVY = '#0B1F4D';
+const INK = '#111111';
+const WHITE = '#FFFFFF';
+const MUTED = '#8C8C8C';
+const LEVEL_COLOR = '#ff7722';   // same as the XP ring on Home
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
-const ACCENT   = '#C6F135';
-const BG_MODAL = '#1A1A26';
-const SURFACE  = '#22222E';
-const SURFACE2 = '#2C2C3C';
-const BORDER   = '#42425A';
+const BURST_DOTS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: NAVY + 'CC',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContainer: {
-    width: '88%',
-    backgroundColor: BG_MODAL,
-    borderRadius: 22,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: BORDER,
+  card: {
+    width: '84%',
+    backgroundColor: WHITE,
+    borderRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 22,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
     elevation: 12,
   },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+  iconArea: {
+    width: 150,
+    height: 130,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
   },
-  headerLeft: {
-    gap: 6,
+  burstDot: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 3,
+  },
+  iconCircle: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  levelNumber: {
+    color: WHITE,
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: -1,
   },
   badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: ACCENT + '22',
-    borderWidth: 1,
-    borderColor: ACCENT + '55',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: NAVY,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 4,
+    marginBottom: 10,
   },
   badgeText: {
-    color: ACCENT,
-    fontSize: 9,
-    fontWeight: '700',
+    color: WHITE,
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 1.5,
   },
   title: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: INK,
     letterSpacing: -0.5,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: SURFACE2,
-    borderWidth: 1,
-    borderColor: BORDER,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
+    textAlign: 'center',
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 12,
-    color: '#A0A0BC',
-    marginBottom: 18,
-    lineHeight: 17,
-  },
-
-  // Progress card
-  progressCard: {
-    backgroundColor: SURFACE,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 14,
-    marginBottom: 20,
-  },
-  progressTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#A0A0BC',
-    letterSpacing: 1.2,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-  },
-  progressRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  progressItem: {
-    alignItems: 'center',
-    gap: 3,
-  },
-  progressValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  progressLabel: {
-    fontSize: 11,
-    color: '#A0A0BC',
-    fontWeight: '500',
-  },
-  progressDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: BORDER,
-  },
-
-  // Inputs
-  inputGroup: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: SURFACE,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  inputLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#DDDDF0',   // bright, readable
-  },
-  input: {
-    width: 72,
-    backgroundColor: SURFACE2,
-    borderWidth: 1.5,
-    borderColor: BORDER,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    fontSize: 13,
+    color: MUTED,
     textAlign: 'center',
-    color: '#FFFFFF',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  button: {
+    alignSelf: 'stretch',
+    backgroundColor: INK,
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: WHITE,
     fontSize: 15,
-    fontWeight: '700',
-  },
-
-  // Buttons
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: ACCENT,
-    paddingVertical: 14,
-    borderRadius: 13,
-    gap: 8,
-    marginBottom: 10,
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  saveButtonText: {
-    color: '#0E0E12',
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    paddingVertical: 11,
-    borderRadius: 13,
-    borderWidth: 1.5,
-    borderColor: '#FF4D6D44',
-    gap: 7,
-  },
-  resetButtonText: {
-    color: '#FF4D6D',
-    fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });
 
